@@ -10,11 +10,16 @@ export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo()
 const MARGIN = safeMargin(DEVICE_WIDTH, SQUARE_MARGIN_RATIO)
 const LIST_W = DEVICE_WIDTH - MARGIN * 2
 
+// A little extra top margin on square devices: the title was sitting right
+// up against the status bar/bezel on real hardware (observed on Bip Max).
+const TITLE_Y = px(40)
+const TITLE_H = px(50)
+
 export const TITLE_TEXT_STYLE = {
   x: MARGIN,
-  y: px(20),
+  y: TITLE_Y,
   w: DEVICE_WIDTH - MARGIN * 2,
-  h: px(50),
+  h: TITLE_H,
   color: 0xffffff,
   text_size: px(32),
   align_h: hmUI.align.CENTER_H,
@@ -23,7 +28,7 @@ export const TITLE_TEXT_STYLE = {
 
 export const TIPS_TEXT_STYLE = {
   x: MARGIN,
-  y: px(100),
+  y: TITLE_Y + px(80),
   w: DEVICE_WIDTH - MARGIN * 2,
   h: DEVICE_HEIGHT - px(160),
   color: 0xaaaaaa,
@@ -39,7 +44,7 @@ export const TIPS_TEXT_STYLE = {
 // mark) as its own text — the note preview is dropped from the row, since
 // the full note is one tap away on the detail screen.
 export const ROW_X = MARGIN
-export const ROW_Y = px(76)
+export const ROW_Y = TITLE_Y + TITLE_H + px(6)
 export const ROW_W = LIST_W
 export const ROW_H = px(78)
 export const ROW_SPACE = px(8)

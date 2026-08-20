@@ -17,11 +17,16 @@ export const SCROLL_CONTAINER = {
   h: DEVICE_HEIGHT
 }
 
+// A little extra top margin on square devices: the title was sitting right
+// up against the status bar/bezel on real hardware (observed on Bip Max).
+const TITLE_Y = px(44)
+const TITLE_H = px(64)
+
 export const TITLE_TEXT_STYLE = {
   x: CONTENT_X,
-  y: px(24),
+  y: TITLE_Y,
   w: CONTENT_W,
-  h: px(64),
+  h: TITLE_H,
   color: 0xffffff,
   text_size: px(30),
   align_h: hmUI.align.LEFT,
@@ -36,7 +41,7 @@ export const NAV_Y = DEVICE_HEIGHT - px(64)
 // Reading controls (font size +/-, keep-awake toggle) sit in their own row
 // between the title and the description, so DESCRIPTION_TEXT_STYLE starts
 // below them rather than at a fixed offset from the title.
-export const CONTROL_Y = px(96)
+export const CONTROL_Y = TITLE_Y + TITLE_H + px(8)
 export const CONTROL_H = px(46)
 const CONTROL_GAP = px(8)
 const CONTROL_BTN_W = Math.floor((CONTENT_W - CONTROL_GAP * 2) / 3)
