@@ -1,43 +1,46 @@
 /**
- * Pure merge logic for applySyncPayload, kept separate from file I/O
+ * Pure replace logic for applySyncPayload, kept separate from file I/O
  * (utils/syncStore.js) so it can be exercised without @zos/fs — e.g. from a
  * plain Node script during development.
+ *
+ * This is a full replace, not an incremental merge: PULL_SYNC always sends
+ * the complete current folders/notes (Settings is the single source of
+ * truth, not a stream of diffs), so anything the watch has stored that
+ * isn't in the incoming payload is dropped — not just entries explicitly
+ * flagged `deleted: true`. An incremental tombstone-only merge left orphaned
+ * entries permanently stuck on the watch whenever their source id stopped
+ * being served at all (e.g. the old hardcoded mock notes, once removed from
+ * app-side — no tombstone was ever generated for ids the payload simply
+ * never mentions again, so they never got cleaned up).
  */
 export function mergeFolders(existingFolders, incomingFolders) {
-  const folderById = new Map(existingFolders.map((folder) => [folder.id, folder]))
-  let removed = 0
-  let upserted = 0
+  const existingById = new Map(existingFolders.map((folder) => [folder.id, folder]))
+  const active = incomingFolders.filter((folder) => !folder.deleted)
 
-  incomingFolders.forEach((incoming) => {
-    if (incoming.deleted) {
-      if (folderById.delete(incoming.id)) removed += 1
-      return
-    }
-    const existing = folderById.get(incoming.id)
-    folderById.set(incoming.id, {
+  const folders = active.map((incoming) => {
+    const existing = existingById.get(incoming.id)
+    return {
       id: incoming.id,
       name: incoming.name,
       createdAt: existing ? existing.createdAt : incoming.updatedAt,
       updatedAt: incoming.updatedAt
-    })
-    upserted += 1
+    }
   })
 
-  return { folders: Array.from(folderById.values()), removed, upserted }
+  const removed = existingFolders.filter(
+    (folder) => !active.some((incoming) => incoming.id === folder.id)
+  ).length
+
+  return { folders, removed, upserted: active.length }
 }
 
 export function mergeNotes(existingNotes, incomingNotes) {
-  const noteById = new Map(existingNotes.map((note) => [note.id, note]))
-  let removed = 0
-  let upserted = 0
+  const existingById = new Map(existingNotes.map((note) => [note.id, note]))
+  const active = incomingNotes.filter((note) => !note.deleted)
 
-  incomingNotes.forEach((incoming) => {
-    if (incoming.deleted) {
-      if (noteById.delete(incoming.id)) removed += 1
-      return
-    }
-    const existing = noteById.get(incoming.id)
-    noteById.set(incoming.id, {
+  const notes = active.map((incoming) => {
+    const existing = existingById.get(incoming.id)
+    return {
       id: incoming.id,
       folderId: incoming.folderId,
       title: incoming.title,
@@ -46,9 +49,10 @@ export function mergeNotes(existingNotes, incomingNotes) {
       createdAt: existing ? existing.createdAt : incoming.updatedAt,
       updatedAt: incoming.updatedAt,
       deletedAt: null
-    })
-    upserted += 1
+    }
   })
 
-  return { notes: Array.from(noteById.values()), removed, upserted }
+  const removed = existingNotes.filter((n) => !active.some((incoming) => incoming.id === n.id)).length
+
+  return { notes, removed, upserted: active.length }
 }

@@ -11,22 +11,10 @@ const FORCE_SYNC_KEY = 'forceSyncRequestedAt'
 // something in this file, but avoidable by writing once per action.
 const NOTELET_DATA_KEY = 'noteletData'
 
+// No mock data — an untouched install starts genuinely empty.
 const SEED_DATA = {
-  folders: [
-    { id: 'folder-work', name: 'Work', updatedAt: 1750000000000 },
-    { id: 'folder-personal', name: 'Personal', updatedAt: 1750000000000 },
-    { id: 'folder-ideas', name: 'Ideas', updatedAt: 1750000000000 }
-  ],
-  notes: [
-    {
-      id: 'note-001',
-      folderId: 'folder-work',
-      title: 'API Architecture',
-      description: 'Use Redis for frequently accessed API responses.',
-      isPinned: true,
-      updatedAt: 1750000000000
-    }
-  ],
+  folders: [],
+  notes: [],
   deletedFolderIds: [],
   deletedNoteIds: []
 }
@@ -64,6 +52,42 @@ const emptyStateStyle = {
   padding: '8px 0'
 }
 
+const taglineStyle = {
+  fontSize: '12px',
+  color: TEXT_SECONDARY,
+  marginBottom: '4px'
+}
+
+const addFormStyle = {
+  marginTop: '4px',
+  paddingTop: '10px',
+  borderTop: `1px solid ${BORDER}`
+}
+
+const formActionsStyle = {
+  display: 'flex',
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginTop: '10px'
+}
+
+const cancelButtonStyle = {
+  fontSize: '14px',
+  color: TEXT_SECONDARY,
+  marginLeft: '20px'
+}
+
+function folderChipStyle(active) {
+  return {
+    fontSize: '13px',
+    padding: '4px 2px 6px',
+    marginRight: '18px',
+    color: active ? ACCENT : TEXT_SECONDARY,
+    fontWeight: active ? 'bold' : 'normal',
+    borderBottom: active ? `2px solid ${ACCENT}` : '2px solid transparent'
+  }
+}
+
 function readJson(storage, key, fallback) {
   const raw = storage.getItem(key)
   if (!raw) return fallback
@@ -97,7 +121,9 @@ AppSettingsPage({
     newFolderName: '',
     newNoteTitle: '',
     newNoteDescription: '',
-    newNoteFolderId: null
+    newNoteFolderId: null,
+    isAddingFolder: false,
+    isAddingNote: false
   },
   loadState(settingsStorage) {
     this.state.settingsStorage = settingsStorage
@@ -123,6 +149,18 @@ AppSettingsPage({
       })
     )
   },
+  // Mutating this.state alone doesn't redraw the page here — only an actual
+  // settingsStorage write does (see selectNoteFolder), so these toggles
+  // need the same persist() nudge to actually reveal/hide the form.
+  startAddingFolder() {
+    this.state.isAddingFolder = true
+    this.persist()
+  },
+  cancelAddingFolder() {
+    this.state.isAddingFolder = false
+    this.state.newFolderName = ''
+    this.persist()
+  },
   addFolder() {
     const name = this.state.newFolderName.trim()
     if (!name) return
@@ -131,6 +169,7 @@ AppSettingsPage({
       { id: generateId('folder'), name, updatedAt: Date.now() }
     ]
     this.state.newFolderName = ''
+    this.state.isAddingFolder = false
     this.persist()
   },
   // FR-MOB-003: deleting a folder moves its notes to Uncategorized rather
@@ -141,6 +180,16 @@ AppSettingsPage({
       note.folderId === folderId ? { ...note, folderId: null, updatedAt: Date.now() } : note
     )
     this.state.deletedFolderIds = [...this.state.deletedFolderIds, folderId]
+    this.persist()
+  },
+  startAddingNote() {
+    this.state.isAddingNote = true
+    this.persist()
+  },
+  cancelAddingNote() {
+    this.state.isAddingNote = false
+    this.state.newNoteTitle = ''
+    this.state.newNoteDescription = ''
     this.persist()
   },
   addNote() {
@@ -159,6 +208,7 @@ AppSettingsPage({
     ]
     this.state.newNoteTitle = ''
     this.state.newNoteDescription = ''
+    this.state.isAddingNote = false
     this.persist()
   },
   deleteNote(noteId) {
@@ -170,6 +220,14 @@ AppSettingsPage({
     this.state.notes = this.state.notes.map((note) =>
       note.id === noteId ? { ...note, isPinned: !note.isPinned, updatedAt: Date.now() } : note
     )
+    this.persist()
+  },
+  // Mutating this.state alone doesn't redraw the page here — only an actual
+  // settingsStorage write does (that's why Delete/Pin/Add already worked:
+  // they all call persist()). This picker's selection needs the same
+  // trigger even though the data it's writing hasn't changed.
+  selectNoteFolder(folderId) {
+    this.state.newNoteFolderId = folderId
     this.persist()
   },
   folderName(folderId) {
@@ -197,7 +255,7 @@ AppSettingsPage({
   renderNoteRow(note) {
     return View({ style: rowStyle }, [
       View({ style: { flex: 1 } }, [
-        View({ style: { fontSize: '14px' } }, [`${note.isPinned ? '⭐ ' : ''}${note.title}`]),
+        View({ style: { fontSize: '14px' } }, [`${note.isPinned ? '📌 ' : ''}${note.title}`]),
         View({ style: { fontSize: '12px', color: TEXT_SECONDARY, marginTop: '1px' } }, [
           this.folderName(note.folderId)
         ])
@@ -220,7 +278,7 @@ AppSettingsPage({
     const syncStatus = readJson(props.settingsStorage, SYNC_STATUS_KEY, null)
 
     return View({ style: { padding: '16px 20px 32px' } }, [
-      //   Section({ title: gettext('aboutTitle'), description: gettext('aboutBody') }, []),
+      View({ style: taglineStyle }, [gettext('aboutBody')]),
 
       Section(
         {
@@ -249,18 +307,38 @@ AppSettingsPage({
             )
           : View({ style: emptyStateStyle }, [gettext('noFoldersYet')]),
 
-        TextInput({
-          label: gettext('newFolderName'),
-          value: this.state.newFolderName,
-          onChange: (val) => {
-            this.state.newFolderName = val
-          }
-        }),
-        Button({
-          label: `+ ${gettext('addFolder')}`,
-          style: primaryButtonStyle,
-          onClick: () => this.addFolder()
-        })
+        this.state.isAddingFolder
+          ? View({ style: addFormStyle }, [
+              TextInput({
+                label: gettext('newFolderName'),
+                value: this.state.newFolderName,
+                // TextInput opens a native modal and onChange fires once on
+                // confirm, not per keystroke — persist() here is what makes
+                // the typed value actually show up as this row's preview
+                // (see selectNoteFolder for why that's needed at all).
+                onChange: (val) => {
+                  this.state.newFolderName = val
+                  this.persist()
+                }
+              }),
+              View({ style: formActionsStyle }, [
+                Button({
+                  label: gettext('addFolder'),
+                  style: primaryButtonStyle,
+                  onClick: () => this.addFolder()
+                }),
+                Button({
+                  label: gettext('cancel'),
+                  style: cancelButtonStyle,
+                  onClick: () => this.cancelAddingFolder()
+                })
+              ])
+            ])
+          : Button({
+              label: `+ ${gettext('addFolder')}`,
+              style: primaryButtonStyle,
+              onClick: () => this.startAddingFolder()
+            })
       ]),
 
       Section({ title: gettext('notesSectionTitle') }, [
@@ -271,44 +349,64 @@ AppSettingsPage({
             )
           : View({ style: emptyStateStyle }, [gettext('noNotesYet')]),
 
-        TextInput({
-          label: gettext('newNoteTitle'),
-          value: this.state.newNoteTitle,
-          onChange: (val) => {
-            this.state.newNoteTitle = val
-          }
-        }),
-        TextInput({
-          label: gettext('newNoteDescription'),
-          value: this.state.newNoteDescription,
-          onChange: (val) => {
-            this.state.newNoteDescription = val
-          }
-        }),
-        this.state.folders.length > 0 &&
-          View(
-            {
-              style: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', marginTop: '8px' }
-            },
-            this.state.folders.map((folder, index) =>
-              Button({
-                label: index === 0 ? folder.name : `  ·  ${folder.name}`,
-                style: {
-                  fontSize: '13px',
-                  color: this.state.newNoteFolderId === folder.id ? ACCENT : TEXT_SECONDARY,
-                  fontWeight: this.state.newNoteFolderId === folder.id ? 'bold' : 'normal'
-                },
-                onClick: () => {
-                  this.state.newNoteFolderId = folder.id
+        this.state.isAddingNote
+          ? View({ style: addFormStyle }, [
+              TextInput({
+                label: gettext('newNoteTitle'),
+                value: this.state.newNoteTitle,
+                onChange: (val) => {
+                  this.state.newNoteTitle = val
+                  this.persist()
                 }
-              })
-            )
-          ),
-        Button({
-          label: `+ ${gettext('addNote')}`,
-          style: primaryButtonStyle,
-          onClick: () => this.addNote()
-        })
+              }),
+              TextInput({
+                label: gettext('newNoteDescription'),
+                value: this.state.newNoteDescription,
+                onChange: (val) => {
+                  this.state.newNoteDescription = val
+                  this.persist()
+                }
+              }),
+              this.state.folders.length > 0 &&
+                View(
+                  {
+                    style: {
+                      display: 'flex',
+                      flexDirection: 'row',
+                      flexWrap: 'wrap',
+                      marginTop: '10px'
+                    }
+                  },
+                  this.state.folders.map((folder) => {
+                    const active = this.state.newNoteFolderId === folder.id
+                    return Button({
+                      // A style-only change on an otherwise-identical Button
+                      // doesn't reliably re-render here (same issue found on
+                      // the watch side) — the label itself must differ too.
+                      label: active ? `● ${folder.name}` : folder.name,
+                      style: folderChipStyle(active),
+                      onClick: () => this.selectNoteFolder(folder.id)
+                    })
+                  })
+                ),
+              View({ style: formActionsStyle }, [
+                Button({
+                  label: gettext('addNote'),
+                  style: primaryButtonStyle,
+                  onClick: () => this.addNote()
+                }),
+                Button({
+                  label: gettext('cancel'),
+                  style: cancelButtonStyle,
+                  onClick: () => this.cancelAddingNote()
+                })
+              ])
+            ])
+          : Button({
+              label: `+ ${gettext('addNote')}`,
+              style: primaryButtonStyle,
+              onClick: () => this.startAddingNote()
+            })
       ])
     ])
   }

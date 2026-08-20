@@ -95,7 +95,7 @@ Page(
           y: ROW_Y + index * (ROW_H + ROW_SPACE),
           w: ROW_W,
           h: ROW_H,
-          text: note.isPinned ? `⭐ ${note.title}` : note.title,
+          text: note.isPinned ? `📌 ${note.title}` : note.title,
           click_func: () => this.onNoteClick(index)
         })
       )

@@ -1,6 +1,6 @@
 import { BaseSideService, settingsLib } from '@zeppos/zml/base-side'
 
-import { MOCK_FOLDERS, MOCK_NOTES, SYNC_PROTOCOL_VERSION } from './../utils/constants'
+import { SYNC_PROTOCOL_VERSION } from './../utils/constants'
 
 const SYNC_STATUS_KEY = 'syncStatus'
 const FORCE_SYNC_KEY = 'forceSyncRequestedAt'
@@ -25,14 +25,13 @@ function readJson(key, fallback) {
  * settingsStorage is the interim "real" data source until the mobile app
  * <-> watch BLE bridge (Phase 0) exists: the phone's Settings page
  * (setting/index.js) does folder/note CRUD directly against it, and
- * PULL_SYNC below just serves whatever is currently stored there — seeded
- * from the original mock catalog on first run so nothing regresses for
- * anyone who hasn't touched Settings yet.
+ * PULL_SYNC below just serves whatever is currently stored there. No mock
+ * data — an untouched install starts genuinely empty.
  */
 function buildSyncPayload() {
   const data = readJson(NOTELET_DATA_KEY, {
-    folders: MOCK_FOLDERS,
-    notes: MOCK_NOTES,
+    folders: [],
+    notes: [],
     deletedFolderIds: [],
     deletedNoteIds: []
   })

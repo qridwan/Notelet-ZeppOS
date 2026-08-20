@@ -1,8 +1,5 @@
-msgid "aboutTitle"
-msgstr "Notelet"
-
 msgid "aboutBody"
-msgstr "Interim note management until the mobile app connects to your watch (see README). Folders and notes here sync to the watch."
+msgstr "Your notes, always within reach."
 
 msgid "syncSectionTitle"
 msgstr "Sync"
@@ -54,3 +51,6 @@ msgstr "Unpin"
 
 msgid "delete"
 msgstr "Delete"
+
+msgid "cancel"
+msgstr "Cancel"

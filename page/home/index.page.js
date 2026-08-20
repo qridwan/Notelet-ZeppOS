@@ -105,17 +105,17 @@ Page(
       if (status.status === SyncStatusValue.SYNCING) {
         syncLabel = 'Syncing…'
       } else if (status.lastSyncedAt) {
-        syncLabel = `🔄 Last synced ${formatTime(status.lastSyncedAt)}`
+        syncLabel = `🔄 Sync ${formatTime(status.lastSyncedAt)}`
       }
 
       const items = [
-        { iconText: '⭐', label: 'Pinned', route: { type: 'pinned' } },
+        { iconText: '📌', label: 'Pinned', route: { type: 'pinned' } },
         ...folders.map((folder) => ({
           iconText: '📁',
           label: folder.name,
           route: { type: 'folder', folderId: folder.id, folderName: folder.name }
         })),
-        { iconText: '🔍', label: 'Search', route: { type: 'search' } },
+        // { iconText: '🔍', label: 'Search', route: { type: 'search' } },
         { iconText: '', label: syncLabel, route: { type: 'sync' } }
       ]
       this.state.items = items
