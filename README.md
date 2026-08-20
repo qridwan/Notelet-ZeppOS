@@ -22,7 +22,7 @@ Target devices: Amazfit Balance 3 (round, 480×480), Amazfit Balance Ultra (roun
 ```
 Notelet/
 ├── app.js, app.json          # Zepp OS watch app entry + manifest
-├── app-side/                 # Watch-side data service (mock data for now)
+├── app-side/                 # Watch-side data service (reads Settings-managed data)
 ├── page/                     # Watch screens: home, folder, note-detail
 ├── setting/                  # Watch app settings page
 ├── utils/                    # Shared watch-side helpers
@@ -49,10 +49,12 @@ Notelet/
 | 3 — Mobile UI | Screens for folders, notes, search, pinned, recent, note editor | Done |
 | 4 — Sync engine | Protocol, change detection, retry, error handling | Done (against a mock transport — see below) |
 | 5 — Watch integration | Receive/validate/apply sync payloads, local storage, sync status | Done (against app-side's mock payload — see below) |
-| 6 — Device adaptation | Round safe area, square space use, consistent margins across all watch screens | Done (verified by geometry, not yet on a physical device) |
-| 7 — Testing | Unit/integration/device/E2E | Not started |
+| 6 — Device adaptation | Round safe area, square space use, consistent margins across all watch screens | Done — verified by geometry **and** on a real Amazfit Bip Max (fixed a real top-clipping bug the Simulator never showed) |
+| 7 — Testing | Unit/integration/device/E2E | No automated suite; extensive manual testing throughout (Simulator + real Bip Max) |
 
-The mobile app and watch app are currently independent — there is no live sync between them yet. The watch app runs entirely on seeded mock data (`utils/constants.js`).
+The mobile app and watch app are currently independent — there is no live sync between them yet. The watch app's data comes from the phone-side Settings page (an explicit, temporary interim data source — see below), not from the mobile app. All hardcoded mock/seed data has been removed; an untouched install starts genuinely empty.
+
+See [.CLAUDE/srs.md §70](.CLAUDE/srs.md) for the full implementation-status writeup, including real-world constraints discovered along the way (a documented platform gap in Phase 0, environment-specific rendering/navigation quirks, and the sync-model correction below).
 
 ## Prerequisites
 
@@ -151,7 +153,9 @@ for f in $(find . -path './node_modules' -prune -o -name '*.js' -print); do
 done
 ```
 
-There is no automated test suite yet (Phase 7). The sync engine's protocol/diffing/transport logic has ad-hoc smoke coverage (pure-function checks plus a full round trip against `MockWatchTransport`) but no committed test files. The critical end-to-end acceptance test — create a note on mobile, sync to a real watch, disconnect, and read it offline — can't be exercised until Phase 0 (communication POC) and Phase 5 (watch integration) are built.
+There is no automated test suite yet (Phase 7). The sync engine's protocol/diffing/transport logic has ad-hoc smoke coverage (pure-function checks plus a full round trip against `MockWatchTransport`) but no committed test files. What exists instead is real, continuous manual testing throughout development — including on a physical Amazfit Bip Max, which is how the Phase 6 top-clipping bug (§70.4 in the SRS) was actually found, and how several environment-specific bugs were caught: `SCROLL_LIST` not rendering at all in this environment, the legacy `hmApp.gotoPage` API not existing (replaced with `@zos/router`'s `push`), a Side Service crash from an unguarded `this.call()`, and a Settings-page quirk where mutating state alone never redraws the page without an accompanying `settingsStorage` write. Full details in [.CLAUDE/srs.md §70.5](.CLAUDE/srs.md).
+
+The critical end-to-end acceptance test — create a note on mobile, sync to a real watch, disconnect, and read it offline — still can't be exercised, because the mobile app and watch remain unconnected (§70.2/§70.3 in the SRS: no documented bridge exists yet, and Settings-page CRUD is standing in as an interim data source in its place).
 
 ## Design Principles
 

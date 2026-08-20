@@ -1857,3 +1857,86 @@ The entire product ultimately needs to deliver one simple experience:
 Create a note on your phone → sync it to your watch → disconnect everything → open Notelet on your watch → read the note.
 
 If that experience is fast, reliable, and genuinely pleasant, Notelet has achieved its core purpose.
+
+⸻
+
+70. Implementation Status & Findings (Post-Hoc)
+
+This section records what was actually built against this spec, and — more importantly — what real implementation work revealed that this spec could not have known in advance. It supplements, not replaces, the requirements above.
+
+70.1 Phase Status
+
+Phase 0 (Platform validation) — Partial. See §70.2: the phone↔watch communication path assumed by this spec does not exist as documented; a real but unbuilt alternative was identified.
+
+Phase 1 (Watch foundation) — Done. Home, folder, and note-detail screens, adaptive round/square layout, local offline storage.
+
+Phase 2 (Mobile foundation) — Done. Expo/TypeScript project, SQLite schema, migrations, repositories.
+
+Phase 3 (Mobile UI) — Done. Folders, notes, search, pinned, recent, note editor.
+
+Phase 4 (Sync engine) — Done against a mock transport. Protocol, incremental change detection, retry, and error handling are implemented and tested, but never against a real phone↔watch connection (see §70.2).
+
+Phase 5 (Watch integration) — Done, with one material deviation from this spec: see §70.3.
+
+Phase 6 (Device adaptation) — Done, and unlike the other phases this one WAS verified on physical hardware (Amazfit Bip Max) mid-project — see §70.4.
+
+Phase 7 (Testing) — Not started as an automated suite. Manual verification happened continuously throughout development instead (see §70.5).
+
+⸻
+
+70.2 Communication POC Finding: No Third-Party App Channel Exists
+
+SRS §9 required validating the real Zepp OS phone↔watch communication APIs before building the full sync architecture. That validation happened — late, after Phases 2–6 were already built out of the prescribed order — and it surfaced a fact this spec's architecture (§8, §69) assumed away:
+
+There is no documented channel between a separate third-party mobile app and a Zepp OS mini-program's Side Service. Checked directly against docs.zepp.com. The only sanctioned Side Service communication paths are:
+  - Device App ↔ Side Service, via Bluetooth, but confined to the Zepp app's own process
+  - Side Service ↔ Settings App, via shared settingsStorage
+  - Side Service ↔ a remote server, via fetch — excluded here by Rule 2 (no backend)
+
+None of these let the separate "Notelet" mobile app (mobile/) hand data to the watch's app-side service directly. This is not a bug to fix in this codebase; it is a real gap in the platform's supported architecture for this exact product shape (an independent branded companion app, not the Zepp app itself).
+
+The one real bypass identified: @zos/ble (confirmed against installed @zeppos/device-types definitions, API 3.0+) lets the watch's Device App act as a full BLE Central — scanning for and connecting directly to any BLE peripheral, bypassing the Zepp app entirely. If the mobile app advertised itself as a custom BLE peripheral (GATT server), the watch could connect straight to it.
+
+What stands between here and that working: real BLE peripheral/GATT-server capability in React Native/Expo. No currently-maintained, verified library provides this — the most commonly cited package's own description identifies it as a peripheral simulator for testing, not a working implementation. Building this for real requires a custom native module (CoreBluetooth CBPeripheralManager on iOS, BluetoothGattServer on Android). The watch-side BLE Central transport and a shared chunked-protocol codec were built and cross-verified for byte-for-byte interoperability (utils/ble/ and mobile/src/services/sync/ble/), but none of it has run against real Bluetooth hardware, and the mobile-side peripheral itself remains unbuilt.
+
+⸻
+
+70.3 Deviation: Settings-Page CRUD as Interim Data Source
+
+Because §70.2's bridge doesn't exist yet, the watch had no real data to display beyond hardcoded mock notes. Per direct instruction, the phone-side Settings mini-program (setting/index.js) was extended with folder/note CRUD (create, delete, pin/unpin) that writes to settingsStorage, which app-side/index.js's PULL_SYNC now serves to the watch.
+
+This is an explicit, temporary deviation from this spec's architecture, not a replacement for it. §11–12 (mobile app owns note/folder management) and Rule 3 (watch is read-only) still hold — the Settings page is not "the mobile app," and the watch still never edits anything. But it does mean a second, separate CRUD surface exists today outside the mobile/ app, purely to make the product testable before the real bridge exists. Once §70.2's bridge is built, this should be retired in favor of the real mobile app's data.
+
+All hardcoded mock/seed data (the original 5-note, 3-folder catalog referenced throughout early development) has since been removed from the codebase; an untouched install now starts genuinely empty on both the watch and in Settings.
+
+70.3.1 Sync model correction. The original watch-side merge (utils/syncMerge.js) applied incoming changes as an incremental, tombstone-based merge: entities were only removed from the watch if explicitly flagged deleted in the payload. This left real, reproduced orphaned data on the watch — the original mock notes stayed permanently stuck (including showing up under Pinned) after the mock data was deleted from the source code entirely, because no tombstone was ever generated for ids that simply stopped being served. Given the Settings page always sends its complete current list rather than a diff, the merge was changed to a full replace: the watch's local folders/notes now become exactly what the latest payload contains, full stop. This is correct specifically because the current data source (Settings) is a complete snapshot every time; if a future real bridge instead streams incremental changes (as the mobile Phase 4 sync engine's sync_metadata-based diffing already does), this watch-side logic would need to move back toward tombstone-aware merging for that source.
+
+⸻
+
+70.4 Real-Device Verification (Phase 6)
+
+Unlike every other phase, device adaptation was actually checked against physical hardware mid-project (an Amazfit Bip Max), not simulator-only. That check found a real defect the simulator never surfaced: on real hardware, the folder-name and note-title text sat close enough to the top bezel/status-bar area to look clipped. Layout constants for both square-target pages were adjusted to add top clearance, deriving dependent row/section offsets from the title's own position so the fix can't silently drift out of sync again. Round-display margins were not touched, since the issue was specific to the square target's tighter default margin.
+
+This is the only requirement in this document that has real-hardware confirmation as of this writing. Everything else in Phase 6 (round safe-area math, square margin ratios) is verified by geometry and Simulator testing only.
+
+⸻
+
+70.5 Environment-Specific Constraints Found During Implementation
+
+These are not requirements changes — they are hard constraints of the actual Zepp OS Simulator/runtime and Settings-page framework encountered while building this spec, recorded here so a future implementer doesn't rediscover them the hard way:
+
+- SCROLL_LIST does not render in the current environment, regardless of configuration (verified against sane geometry, flat data, full item_config, and image_view present). All watch list UI (home, folder, note-detail pagination) is built from BUTTON and TEXT widgets instead. A TEXT widget layered visually on top of a BUTTON also silently blocks that button's taps — rows must be a single BUTTON with combined text, not a background button plus overlay text.
+
+- hmApp.gotoPage (the legacy navigation API) does not exist in this environment — it throws "not a function." Navigation uses @zos/router's push instead, which is the documented modern replacement.
+
+- A Side Service's this.call() (pushing to the Device App) throws if the watch app isn't currently connected/foregrounded, and an uncaught throw there was observed to crash the whole Side Service instance, taking the watch app down with it. Any onSettingsChange-triggered push must be wrapped defensively.
+
+- In the phone-side Settings App framework, mutating this.state does not, by itself, cause the page to redraw — only an actual settingsStorage.setItem() write does. Any interactive control whose visible state should update immediately (a selection toggle, a form reveal/collapse) must pair its state change with a real (even if functionally redundant) storage write, or the UI will silently desync from the underlying state until some other action forces a redraw.
+
+- A style-only change to an otherwise-identical Button (same label, different color) does not reliably re-render either, in both the watch and the Settings-page environments — the button's label text itself must differ for a visual change to reliably appear.
+
+⸻
+
+70.6 Manual Testing Performed
+
+No automated test suite exists yet (Phase 7 proper). In its place, this project was manually exercised continuously through the Zepp OS Simulator, the Settings-page devtools panel, and a real Amazfit Bip Max over the course of development — covering folder/note CRUD (create, delete, pin/unpin) via Settings, watch navigation across all three screens, manual and Settings-triggered sync, font-size and keep-awake controls on note-detail, and the round/square layout adjustments in §70.4. This is real coverage, but it is manual and ad hoc, not the committed automated suite §55–58 call for.
