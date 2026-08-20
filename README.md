@@ -32,6 +32,9 @@ Notelet/
     └── src/
         ├── database/         # SQLite schema, migrations, repositories
         ├── services/         # Folder/note/sync service façades
+        ├── navigation/        # Stack navigator + route param types
+        ├── screens/           # Home, note list, search, detail, editor
+        ├── components/        # Shared list rows, empty states, prompt modal
         ├── models, types/    # Domain types
         ├── hooks/, utils/, constants/
 ```
@@ -43,8 +46,8 @@ Notelet/
 | 0 — Platform validation | Phone ↔ watch communication POC | Not started |
 | 1 — Watch foundation | Home/folder/note-detail screens, mock data, offline storage | Done |
 | 2 — Mobile foundation | Expo project, SQLite schema, migrations, repositories | Done |
-| 3 — Mobile UI | Screens for folders, notes, search, pinned | Not started |
-| 4 — Sync engine | Protocol, change detection, retry, error handling | Not started |
+| 3 — Mobile UI | Screens for folders, notes, search, pinned, recent, note editor | Done |
+| 4 — Sync engine | Protocol, change detection, retry, error handling | Done (against a mock transport — see below) |
 | 5 — Watch integration | Receive/apply real sync payloads | Not started |
 | 6 — Device adaptation | Round/square layout polish | Partial (base layouts adapt by device width) |
 | 7 — Testing | Unit/integration/device/E2E | Not started |
@@ -80,16 +83,32 @@ npm start
 
 Then press `i` (iOS simulator), `a` (Android emulator), `w` (web), or scan the QR code with Expo Go.
 
-**What to expect**: a minimal status screen confirming the SQLite database opened and ran its migrations (`N folders, N notes on device`). There is no CRUD UI yet — that's Phase 3. To exercise the data layer directly, use the services in code, e.g.:
+**What to expect**: a Home screen with Search / Pinned / Recent and your Folders. From there you can:
+
+- Create/rename/delete folders (long-press a folder for rename/delete)
+- Tap a folder, Pinned, or Recent to see its notes
+- Tap `+` in a folder to create a note (title, description, folder, pinned toggle)
+- Tap a note to view it, then Edit or Delete from there
+- Use Search for a live, offline, case-insensitive search across titles/descriptions/folder names
+
+Everything persists to the on-device SQLite database — force-quit and reopen the app to confirm it survives restarts offline (airplane mode included).
+
+## Sync Engine
+
+`mobile/src/services/sync/` implements the mobile side of the sync protocol (SRS §28–38): a versioned `SYNC_DATA` message built from an incremental change set (only folders/notes marked `PENDING`/`FAILED` in `sync_metadata`), sent over an abstract `SyncTransport`, with retry and failure handling that never touches the mobile database's actual notes/folders — only the sync bookkeeping.
+
+The real phone↔watch channel is still unbuilt (Phase 0's communication POC hasn't run against Zepp OS hardware yet), so `SyncEngine` currently talks to `MockWatchTransport` — an in-memory stand-in that applies `SYNC_DATA` to its own store and acks with `SYNC_COMPLETE`, or simulates `SYNC_ERROR`/a dropped connection on demand. This lets the protocol, diffing, and retry logic be fully exercised now; swapping in a real transport later (once the POC picks the concrete Zepp SDK APIs) means implementing `SyncTransport` — `SyncEngine` itself doesn't change.
 
 ```ts
-import { folderService } from './src/services/folders/folderService';
-import { noteService } from './src/services/notes/noteService';
+import { getDatabase } from './src/database/database';
+import { SyncEngine, MockWatchTransport } from './src/services/sync';
 
-const folder = await folderService.create({ name: 'Work' });
-await noteService.create({ title: 'Test', description: 'Hello', folderId: folder.id });
-await noteService.search('hello');
+const engine = new SyncEngine(await getDatabase(), new MockWatchTransport());
+const result = await engine.sync();
+// { status: 'SUCCESS', syncedFolders: 1, syncedNotes: 3, syncedAt: ... }
 ```
+
+There's no "Sync to Watch" button in the UI yet — that's a Phase 3/5 follow-up once a real transport exists.
 
 ## Testing
 
@@ -106,7 +125,7 @@ for f in $(find . -path './node_modules' -prune -o -name '*.js' -print); do
 done
 ```
 
-There is no automated test suite yet (Phase 7). The critical end-to-end acceptance test — create a note on mobile, sync to watch, disconnect, and read it offline — can't be exercised until Phase 0 (communication POC) and Phase 4/5 (sync engine) are built.
+There is no automated test suite yet (Phase 7). The sync engine's protocol/diffing/transport logic has ad-hoc smoke coverage (pure-function checks plus a full round trip against `MockWatchTransport`) but no committed test files. The critical end-to-end acceptance test — create a note on mobile, sync to a real watch, disconnect, and read it offline — can't be exercised until Phase 0 (communication POC) and Phase 5 (watch integration) are built.
 
 ## Design Principles
 
