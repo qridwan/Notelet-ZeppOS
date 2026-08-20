@@ -1,9 +1,9 @@
 Notelet — Software Requirements Specification (SRS)
 
-Document Version: 1.0.0
-Status: Development Specification
+Document Version: 2.0.0
+Status: Current Implementation
 Product: Notelet
-Target: Mobile Companion App + Zepp OS Watch App
+Target: Zepp OS Watch App (with phone-side Settings page)
 Primary Goal: Offline-first text notes accessible from compatible Amazfit watches
 Target Zepp OS: 5.0
 Target API Level: 4.4
@@ -12,11 +12,9 @@ Target API Level: 4.4
 
 1. Document Purpose
 
-This document defines the complete functional, technical, UX, data, synchronization, and testing requirements for Notelet.
+This document defines the functional, technical, UX, data, synchronization, and testing requirements for Notelet as currently implemented.
 
-It is written to be agent-friendly, meaning an AI coding agent or development team should be able to use this document as the primary implementation reference.
-
-The implementation should follow this SRS unless a requirement is explicitly changed.
+It is written to be agent-friendly: an AI coding agent or development team should be able to use this document as the primary implementation reference without needing prior context.
 
 ⸻
 
@@ -32,12 +30,12 @@ Your notes, always within reach.
 
 2.3 Product Concept
 
-Notelet is an offline-first, text-only notes application consisting of:
+Notelet is a single Zepp OS watch application with one companion surface: its own **Settings page**, which opens inside the Zepp phone app (not a separately installed mobile app).
 
-1. A mobile application for creating and managing notes.
-2. A Zepp OS smartwatch application for accessing synchronized notes.
-3. A synchronization layer that transfers selected notes from the mobile application to the smartwatch.
-4. Local storage on both mobile and watch so synchronized notes remain accessible without internet connectivity.
+1. A Zepp OS smartwatch application for browsing and reading notes.
+2. A Settings page (part of the same Zepp OS mini-program) for creating, editing, and deleting folders and notes.
+3. A synchronization channel, built into the Zepp OS platform, that carries data from the Settings page to the watch.
+4. Local storage on the watch so synchronized notes remain accessible without any connectivity.
 
 ⸻
 
@@ -45,26 +43,19 @@ Notelet is an offline-first, text-only notes application consisting of:
 
 Notelet should provide the simplest possible way to keep useful information accessible from a smartwatch.
 
-The product philosophy is:
-
-Mobile
+Settings page
 Create
 Edit
-Organize
-Search
-Sync
+Delete
+Pin
+Trigger sync
         ↓
 Watch
 Browse
 Read
-Search
 Access Offline
 
-The watch is not intended to replicate the mobile application.
-
-The mobile application is the primary management interface.
-
-The watch is primarily a fast offline reading companion.
+The watch is not intended to replicate full note-management. It is a fast, offline reading companion; the Settings page is the management interface.
 
 ⸻
 
@@ -72,10 +63,11 @@ The watch is primarily a fast offline reading companion.
 
 The MVP targets the following devices.
 
-Device	Zepp OS	API Level	Shape	Resolution
-Amazfit Balance 3	5.0	4.4	Round	480 × 480
-Amazfit Balance Ultra	5.0	4.4	Round	480 × 480
-Amazfit Bip Max	5.0	4.4	Square	432 × 514
+| Device | Zepp OS | API Level | Shape | Resolution |
+|---|---|---|---|---|
+| Amazfit Balance 3 | 5.0 | 4.4 | Round | 480 × 480 |
+| Amazfit Balance Ultra | 5.0 | 4.4 | Round | 480 × 480 |
+| Amazfit Bip Max | 5.0 | 4.4 | Square | 432 × 514 |
 
 4.1 Compatibility Requirements
 
@@ -88,21 +80,7 @@ The watch application MUST:
 * adapt to device dimensions dynamically;
 * avoid hard-coded coordinates wherever practical.
 
-The application MUST NOT create separate application logic for each watch model.
-
-Instead:
-
-Notelet Core
-    │
-    ├── Data Layer
-    ├── Sync Layer
-    ├── Navigation
-    └── Business Logic
-            │
-            ▼
-       UI Adaptation
-          /       \
-      Round      Square
+The application MUST NOT create separate application logic for each watch model. A single core (data layer, sync layer, navigation, business logic) drives a UI adaptation layer that branches only on device shape/dimensions (`utils/layout.js`, per-target `*.page.r.layout.js` / `*.page.s.layout.js` files).
 
 ⸻
 
@@ -110,1833 +88,350 @@ Notelet Core
 
 5.1 MVP Includes
 
-Mobile
+Settings page (phone-side)
 
 * Folder creation
-* Folder editing
-* Folder deletion
-* Note creation
-* Note editing
+* Folder deletion (notes inside move to Uncategorized, not deleted)
+* Note creation (title, description, folder assignment)
 * Note deletion
-* Note viewing
-* Text search
-* Pinned notes
-* Recent notes
-* Offline storage
-* Watch note selection
-* Manual synchronization
-* Sync status
-* Sync history/status information
+* Note pin/unpin
+* Manual sync trigger ("Check for updates")
+* Sync status display (last checked time, folder/note counts on watch)
 
 Watch
 
-* Home screen
-* Pinned notes
-* Folder browsing
-* Note browsing
-* Note detail
-* Long-text scrolling
-* Basic note search
-* Local offline storage
+* Home screen (Pinned, folders, Search entry, sync status/trigger)
+* Folder browsing (notes in a folder, or Pinned)
+* Note detail (title + full text, paginated for long notes)
+* Font size adjustment on note detail
+* Keep-awake toggle on note detail
+* Local offline storage (full copy of synced data)
 * Sync status
-* Synchronized note deletion/replacement
+* Full data replacement on each sync (see §16)
 
-Synchronization
+5.2 Not Currently Implemented
 
-* New notes
-* Updated notes
-* Deleted notes
-* Folder changes
-* Incremental synchronization
-* Sync retry
-* Sync failure handling
-* Data integrity protection
+The following exist in the product vision but are not built:
 
-⸻
+* Folder rename (Settings page supports create/delete only)
+* Note editing after creation (Settings page supports create/delete/pin only — no edit-in-place)
+* Search (on watch or in Settings)
+* Recent-notes view
+* Selective/per-note sync (sync always replaces the full dataset)
 
-6. Explicitly Out of Scope for MVP
+These are natural follow-ups, not deliberately excluded — see §5.3.
 
-The following MUST NOT be implemented in V1 unless specifically requested later:
+5.3 Explicitly Out of Scope
 
-* Rich text
-* Images
-* Video
-* Audio attachments
-* File attachments
+The following MUST NOT be implemented unless specifically requested later:
+
+* Rich text, images, video, audio, or file attachments
 * Markdown rendering
-* Note collaboration
-* Public note sharing
+* Note collaboration or public sharing
 * Multi-user workspaces
-* Cloud storage
-* User accounts
-* AI chat
-* AI summarization
-* AI semantic search
+* Cloud backend / cloud storage / user accounts
+* AI features (chat, summarization, semantic search)
 * Watch-side note editing
 * Voice-to-text
-* Web application
-* Desktop application
-* Complex conflict resolution
-* End-to-end cloud synchronization
-
-The architecture SHOULD allow these features to be added later without major restructuring.
+* Web or desktop application
+* A separate installed mobile application (see §8.2 for why)
 
 ⸻
 
-7. Core Product Principles
+6. Core Product Principles
 
 P-001 — Offline First
+Notelet MUST NOT depend on internet connectivity for core note functionality. Sync happens over the Zepp OS Bluetooth channel between the phone (Zepp app) and the watch; no server is involved.
 
-Notelet MUST NOT depend on internet connectivity for core note functionality.
-
-P-002 — Mobile as Source of Truth
-
-For MVP:
-
-The mobile database is the authoritative data source.
-
-The watch contains a synchronized local copy.
+P-002 — Settings Page as Source of Truth
+The Settings page's data (persisted via `settingsStorage`) is authoritative. The watch holds a synchronized local copy.
 
 P-003 — Watch as Companion
-
-The watch should focus on:
-
-Browse → Open → Read → Back
+The watch focuses on: Browse → Open → Read → Back. It does not replicate management features.
 
 P-004 — Text Only
-
-All note content is plain text.
-
-A note consists of:
-
-Title
-Description
+A note consists of a title and a description (plain text).
 
 P-005 — Lightweight
-
-The watch application must minimize:
-
-* CPU usage
-* memory usage
-* storage
-* synchronization payload size
-* battery impact
+The watch application must minimize CPU, memory, storage, sync payload size, and battery impact.
 
 ⸻
 
-8. System Architecture
+7. System Architecture
 
-8.1 High-Level Architecture
+7.1 High-Level Architecture
 
-┌──────────────────────────────────────────┐
-│                NOTELET                   │
-│                                          │
-│  ┌─────────────────┐                     │
-│  │   Mobile App    │                     │
-│  │                 │                     │
-│  │ UI              │                     │
-│  │ Note Manager    │                     │
-│  │ Search          │                     │
-│  │ Sync Manager    │                     │
-│  │                 │                     │
-│  │ Local Database  │                     │
-│  └────────┬────────┘                     │
-│           │                              │
-│           │ Phone ↔ Watch Communication  │
-│           │                              │
-│           ▼                              │
-│  ┌─────────────────┐                     │
-│  │   Zepp Layer    │                     │
-│  └────────┬────────┘                     │
-│           │                              │
-│           ▼                              │
-│  ┌─────────────────┐                     │
-│  │   Watch App     │                     │
-│  │                 │                     │
-│  │ UI              │                     │
-│  │ Local Storage   │                     │
-│  │ Sync Receiver   │                     │
-│  └─────────────────┘                     │
-└──────────────────────────────────────────┘
+A Zepp OS mini-program has three parts, and Notelet uses all three:
+
+* **Device App** (`page/`, `app.js`) — runs on the watch. UI, local storage, navigation.
+* **Side Service** (`app-side/index.js`) — runs on the phone, inside the Zepp app's own process. No UI. Reads/writes `settingsStorage`, serves data to the Device App over Bluetooth via the framework's `request`/`call` primitives.
+* **Settings App** (`setting/index.js`) — runs on the phone, inside the Zepp app, as a webview. UI for folder/note CRUD. Shares `settingsStorage` with the Side Service.
+
+```
+┌────────────────────────────┐        ┌────────────────────────────┐
+│   Settings App (phone)     │        │   Device App (watch)       │
+│   setting/index.js         │        │   page/home, folder,       │
+│                             │        │   note-detail              │
+│   Folder/Note CRUD UI      │        │   Local JSON storage       │
+└──────────────┬──────────────┘        └──────────────┬─────────────┘
+               │ settingsStorage                        │ Bluetooth
+               │ (shared)                                │ (request/call)
+               ▼                                         ▼
+        ┌───────────────────────────────────────────────────┐
+        │        Side Service (phone) — app-side/index.js    │
+        │  PULL_SYNC · REPORT_SYNC_STATUS · onSettingsChange  │
+        └───────────────────────────────────────────────────┘
+```
+
+7.2 Why there is no separate mobile app
+
+An earlier design considered a separate, independently-installed mobile application as the management surface, communicating with the watch over a custom Bluetooth Low Energy link. That approach was abandoned: there is no documented channel for a separate third-party mobile app to reach a Zepp OS mini-program's Side Service (confirmed against docs.zepp.com — the only sanctioned Side Service channels are Device App via Bluetooth, Settings App via shared `settingsStorage`, and a remote server via `fetch`, the last of which is excluded by this spec's no-backend requirement). Building a custom Bluetooth bridge instead would require a from-scratch native BLE peripheral implementation on the phone side with no verified supporting library. The Settings page, by contrast, is a documented, already-working part of the Zepp OS platform itself, and satisfies the same management requirements.
 
 ⸻
 
-9. Architecture Constraint: Communication POC
+8. Data Model
 
-Before implementing the complete synchronization system, the development agent MUST verify the actual supported phone/watch communication mechanism for the target Zepp OS 5.0/API 4.4 devices using the official Zepp OS SDK/API documentation.
+8.1 Folder
 
-This is a blocking technical validation task.
-
-The first prototype MUST prove:
-
-Mobile
-   ↓
-Send "Hello Notelet"
-   ↓
-Zepp communication layer
-   ↓
-Watch
-   ↓
-Display text
-   ↓
-Store locally
-   ↓
-Disconnect phone
-   ↓
-Read text
-
-Do not implement the full synchronization architecture until this proof of concept succeeds.
-
-⸻
-
-10. Mobile Application
-
-10.1 Recommended Technology
-
-Preferred stack:
-
-React Native
-TypeScript
-Expo
-SQLite
-
-If Zepp communication requires native functionality unavailable through Expo, the implementation MAY use React Native native modules or a suitable alternative.
-
-The development agent MUST verify the communication requirement before locking the final mobile build configuration.
-
-⸻
-
-11. Mobile Application Navigation
-
-Recommended structure:
-
-Home
-├── Search
-├── Pinned
-├── Recent
-└── Folders
-      │
-      ├── Work
-      ├── Personal
-      ├── Ideas
-      └── Other
-
-Suggested screens:
-
-HomeScreen
-FolderScreen
-NoteListScreen
-NoteDetailScreen
-NoteEditorScreen
-SearchScreen
-PinnedScreen
-SettingsScreen
-WatchSyncScreen
-
-⸻
-
-12. Mobile Functional Requirements
-
-FR-MOB-001 — Create Folder
-
-The user MUST be able to create a folder.
-
-Input:
-
-Folder Name
-
-Validation:
-
-* Required
-* Cannot be empty
-* Leading/trailing whitespace should be removed
-* Maximum length should be enforced
-
-⸻
-
-FR-MOB-002 — Rename Folder
-
-The user MUST be able to rename an existing folder.
-
-⸻
-
-FR-MOB-003 — Delete Folder
-
-The user MUST be able to delete a folder.
-
-The application MUST display a confirmation dialog.
-
-If the folder contains notes, the application MUST clearly communicate the consequence.
-
-Recommended behavior:
-
-Delete folder?
-Notes inside this folder will be moved to Uncategorized.
-
-⸻
-
-FR-MOB-004 — Create Note
-
-A note MUST contain:
-
-title
-description
-folderId
-
-Optional:
-
-isPinned
-
-⸻
-
-FR-MOB-005 — Edit Note
-
-The user MUST be able to modify:
-
-* title
-* description
-* folder
-* pinned status
-
-Changes MUST be persisted locally immediately after successful save.
-
-⸻
-
-FR-MOB-006 — Delete Note
-
-The user MUST be able to delete a note.
-
-The application SHOULD use a confirmation dialog.
-
-⸻
-
-FR-MOB-007 — View Note
-
-The note detail screen MUST display:
-
-Title
-Description
-Folder
-Last Updated
-
-⸻
-
-FR-MOB-008 — Search
-
-Search MUST support:
-
-* title
-* description
-* folder name
-
-Search should be case-insensitive.
-
-Search should work completely offline.
-
-⸻
-
-FR-MOB-009 — Pin Note
-
-Users MUST be able to pin/unpin notes.
-
-Pinned notes MUST be accessible from a dedicated Pinned section.
-
-⸻
-
-FR-MOB-010 — Recent Notes
-
-The application SHOULD provide a Recent section.
-
-Default sorting:
-
-updatedAt DESC
-
-⸻
-
-13. Mobile Offline Requirements
-
-The mobile application MUST function without:
-
-* Wi-Fi
-* mobile data
-* internet access
-
-The following MUST work offline:
-
-Create note
-Edit note
-Delete note
-Create folder
-Edit folder
-Delete folder
-Search
-View notes
-Pin/unpin
-Browse folders
-
-The application MUST NOT display an internet-required error for these operations.
-
-⸻
-
-14. Database Specification
-
-14.1 Folder Entity
-
+```
 Folder
 -----------------------
-id
-name
-createdAt
-updatedAt
+id            string (unique, stable across sync)
+name          string
+updatedAt     number (epoch ms)
+```
 
-Field requirements
+8.2 Note
 
-Field	Type	Required
-id	UUID/String	Yes
-name	String	Yes
-createdAt	Timestamp	Yes
-updatedAt	Timestamp	Yes
-
-⸻
-
-15. Note Entity
-
+```
 Note
 -----------------------
-id
-folderId
-title
-description
-isPinned
-createdAt
-updatedAt
-deletedAt
+id            string (unique, stable across sync)
+folderId      string | null   (null = Uncategorized)
+title         string
+description   string (plain text)
+isPinned      boolean
+updatedAt     number (epoch ms)
+```
 
-Field	Type	Required
-id	UUID/String	Yes
-folderId	UUID/String/Nullable	Yes
-title	String	Yes
-description	Text	Yes
-isPinned	Boolean	Yes
-createdAt	Timestamp	Yes
-updatedAt	Timestamp	Yes
-deletedAt	Timestamp/Nullable	No
+8.3 Storage locations
+
+* **Settings page**: folders/notes/deleted-id-tombstones stored as one JSON blob under a single `settingsStorage` key (`noteletData`). One write per user action — see §17 for why this matters.
+* **Watch**: its own full copy of folders/notes, persisted as local JSON files (`utils/syncStore.js`), replaced wholesale on every successful sync (§16).
+* **Sync status**: a small `syncStatus` `settingsStorage` entry (`lastSyncedAt`, `folderCount`, `noteCount`) written by the watch after each sync, read by the Settings page.
 
 ⸻
 
-16. Sync Metadata
+9. Settings Page Functional Requirements
 
-The application SHOULD maintain synchronization metadata separately from business data.
+FR-SET-001 — Create Folder
+The user MUST be able to create a folder by name. Empty/whitespace-only names are rejected.
 
-SyncMetadata
------------------------
-entityId
-entityType
-version
-lastSyncedAt
-syncStatus
+FR-SET-002 — Delete Folder
+The user MUST be able to delete a folder. Notes inside it are reassigned to Uncategorized (`folderId: null`), not deleted.
 
-Possible status values:
+FR-SET-003 — Create Note
+The user MUST be able to create a note with a title, description, and folder assignment (defaulting to the first available folder). Empty titles are rejected.
 
-PENDING
-SYNCING
-SYNCED
-FAILED
+FR-SET-004 — Delete Note
+The user MUST be able to delete a note.
 
-⸻
+FR-SET-005 — Pin/Unpin Note
+The user MUST be able to toggle a note's pinned state.
 
-17. UUID Requirement
+FR-SET-006 — Manual Sync Trigger
+The user MUST be able to trigger a sync from the Settings page ("Check for updates"). This pushes a signal to the watch if it is currently connected/foregrounded; if not, it is a no-op (the watch still syncs on its own next launch).
 
-Every folder and note MUST have a unique identifier.
-
-Recommended:
-
-UUID v4
-
-IDs MUST remain stable across synchronization.
-
-The watch MUST NOT generate a new ID for a mobile-created note.
+FR-SET-007 — Sync Status Display
+The Settings page MUST show the last-synced time and folder/note counts once the watch has reported them at least once.
 
 ⸻
 
-18. Watch Application
+10. Watch Application Requirements
 
-18.1 Watch Responsibilities
+10.1 Watch Responsibilities
 
 The watch application is responsible for:
 
-* receiving synchronized data;
+* pulling and applying synchronized data;
 * storing synchronized data locally;
-* displaying folders;
-* displaying notes;
-* displaying pinned notes;
-* displaying note descriptions;
-* scrolling long text;
-* providing basic search;
-* showing sync state;
-* remaining functional offline.
+* displaying folders, pinned notes, and note details;
+* paginating long note text;
+* showing sync state and offering a manual sync trigger;
+* remaining fully functional offline.
+
+10.2 Home Screen
+
+Shows: app title, Pinned entry, one row per folder, a Search entry (not yet functional — see §5.2), and a sync row ("🔄 Sync now" / "🔄 Last synced HH:MM", tappable to sync on demand).
+
+10.3 Folder Screen
+
+Lists notes in the selected folder (or Pinned). Each row shows the note title (with a pin marker if pinned). Tapping a row opens note detail.
+
+10.4 Note Detail Screen
+
+Shows the note's title and full description. Long notes are split into pages with Prev/Next controls and a page indicator (word-aware pagination, not truncation). Also provides:
+
+* Font size increase/decrease (persisted as a device-wide reading preference, independent of any single note);
+* A keep-awake toggle (extends the screen's bright-time while reading, via `@zos/display`'s `setPageBrightTime`).
+
+10.5 Responsive Layout
+
+The UI MUST support round (480×480) and square (432×514) displays without per-device forks. Round layouts use a wider safe margin (bezel content gets clipped near the edges on round displays); square layouts use a tighter margin and take advantage of the extra vertical space. Both are derived from a single shared ratio-based helper (`utils/layout.js`) rather than hard-coded per-screen offsets.
+
+10.6 Offline Requirement
+
+All watch reading operations (browse folders, open notes, page through long text, view pin status) MUST work with no Bluetooth/network connectivity, using the watch's local copy of the last-synced data.
 
 ⸻
 
-19. Watch Home Screen
+11. Watch UUID / Identity Requirement
 
-The home screen SHOULD contain:
-
-NOTELET
-⭐ Pinned
-📁 Work
-📁 Personal
-📁 Ideas
-🔍 Search
-
-The UI MUST remain readable on both round and square displays.
+Every folder and note MUST have a stable, unique identifier that survives synchronization. The watch never generates its own IDs — it only ever stores what the Settings page created.
 
 ⸻
 
-20. Watch Folder Screen
+12. Synchronization
 
-Example:
+12.1 Model
 
-WORK
-API Architecture
-Meeting Notes
-Deployment
-Database Notes
+Sync is a **full replace**, not an incremental diff:
 
-The user MUST be able to select a note.
+```
+Settings page (settingsStorage: current folders/notes + delete-tombstones)
+        ↓ read by
+Side Service (app-side/index.js) — PULL_SYNC
+        ↓ requested by
+Watch (page/home) — validates payload, then REPLACES its entire local
+folders/notes store with what it received
+```
 
-⸻
+This is deliberate. The Settings page always has and sends its complete current dataset, not a stream of changes — so the watch discards anything in its local store that the latest payload doesn't mention, not just entries explicitly flagged deleted. An earlier tombstone-only merge (remove only what's explicitly flagged deleted, keep everything else) left orphaned data permanently stuck on the watch whenever a source stopped serving certain ids at all, rather than deleting them explicitly. Full replace has no such gap.
 
-21. Watch Note Detail
+12.2 Sync Triggers
 
-Example:
+* Automatically, when the watch app launches (`page/home`'s `build()`).
+* Manually, via the watch's own "Sync now" row.
+* Manually, via the Settings page's "Check for updates" (pushes to the watch if it's connected; otherwise the watch's own next-launch sync covers it).
 
-API Architecture
-Use Redis for frequently
-accessed API responses.
-Consider cache invalidation
-for frequently changing
-resources.
+12.3 Payload Validation
 
-Requirements:
+The watch MUST validate any payload before applying it (`utils/payloadValidation.js`): reject anything with the wrong protocol version or malformed folder/note entries. A rejected or failed sync MUST leave the watch's existing local data untouched.
 
-* Vertical scrolling
-* Clear title
-* Readable description
-* Back navigation
-* No requirement for internet connectivity
+12.4 Sync Status
 
-⸻
+The watch tracks and displays: `IDLE`, `SYNCING`, `SUCCESS`, `FAILED` (`utils/syncStatus.js`), plus last-synced timestamp and counts. After a successful sync, the watch reports counts back to the Side Service (`REPORT_SYNC_STATUS`) so the Settings page can display them too.
 
-22. Watch Pinned Notes
+12.5 Protocol Versioning
 
-Pinned notes MUST be accessible directly from the watch home screen.
-
-Example:
-
-⭐ PINNED
-Current Project
-API Architecture
-Meeting Notes
+The sync payload carries a `protocolVersion` field. A mismatch MUST cause the watch to reject the payload rather than attempt to interpret it.
 
 ⸻
 
-23. Watch Search
+13. Conflict Resolution
 
-MVP watch search SHOULD prioritize note titles.
-
-If the target Zepp device’s input capabilities make free-text search inconvenient, the implementation MAY initially provide title filtering or another lightweight search mechanism.
-
-The architecture MUST allow improved search later.
+Not applicable in the current design: the watch never edits data, so there is nothing for it to conflict with. The Settings page's data always wins.
 
 ⸻
 
-24. Long Text Handling
+14. Error Handling
 
-Notes may contain long descriptions.
+The watch MUST handle, without data loss:
 
-The watch MUST:
-
-* support vertical scrolling;
-* prevent text from overflowing the screen;
-* preserve readable line spacing;
-* avoid truncating the actual note content on the detail screen.
-
-The list view MAY truncate descriptions.
-
-Example:
-
-API Architecture
-Use Redis for frequently...
+* **Sync failure** — validation failure, malformed payload, or a Side Service error. Existing local data remains untouched and available.
+* **Side Service unavailable to push** — a Settings-triggered "Check for updates" MUST NOT crash the Side Service if the watch isn't connected; it must fail silently and let the watch's own next sync catch up.
+* **Note not found** — if a note id no longer exists locally (e.g. deleted mid-navigation), the note-detail screen shows a "Note not found" state rather than crashing.
 
 ⸻
 
-25. Responsive Watch Layout
-
-The watch UI MUST support:
-
-Round
-
-480 × 480
-
-Square
-
-432 × 514
-
-The UI MUST NOT depend on one fixed screen resolution.
-
-Use dynamic dimensions wherever practical.
-
-⸻
-
-26. Round Screen Safe Area
-
-For round displays:
-
-Amazfit Balance 3
-Amazfit Balance Ultra
-
-important content SHOULD remain within a safe central region.
-
-Avoid placing:
-
-* critical text
-* buttons
-* navigation controls
-
-too close to display corners.
-
-⸻
-
-27. Square Screen Layout
-
-For:
-
-Amazfit Bip Max
-
-the application MAY use the additional vertical/horizontal space for:
-
-* larger note lists;
-* larger text areas;
-* more visible navigation options.
-
-However, visual hierarchy SHOULD remain consistent with the round layout.
-
-⸻
-
-28. Synchronization
-
-28.1 Synchronization Model
-
-MVP synchronization:
-
-Mobile
-   ↓
-Sync Manager
-   ↓
-Phone/Zepp Communication
-   ↓
-Watch Sync Receiver
-   ↓
-Watch Local Database
-
-The watch MUST NOT be treated as the authoritative source.
-
-⸻
-
-29. Manual Sync
-
-The MVP MUST support manual synchronization.
-
-Example:
-
-Watch
-Last synced:
-Today 7:30 PM
-        [Sync]
-
-or from the mobile application:
-
-Selected Notes: 12
-       [Sync to Watch]
-
-⸻
-
-30. Selective Sync
-
-The user SHOULD be able to choose which notes are synchronized.
-
-Example:
-
-Work
-☑ API Architecture
-☑ Meeting Notes
-☐ Deployment
-☐ Database Design
-        Sync 2 Notes
-
-⸻
-
-31. Folder-Level Sync
-
-The architecture SHOULD support folder-level synchronization.
-
-Example:
-
-Work
-    [Sync Folder]
-
-When selected, all eligible notes inside the folder are synchronized.
-
-⸻
-
-32. Sync Operations
-
-The synchronization system MUST support:
-
-CREATE
-UPDATE
-DELETE
-
-for notes.
-
-It SHOULD support the same operations for folders.
-
-⸻
-
-33. Incremental Synchronization
-
-The system MUST avoid sending all notes during every synchronization.
-
-Example:
-
-Watch:
-100 notes
-Mobile:
-1 changed note
-Sync:
-1 note
-
-Synchronization should be based on:
-
-updatedAt
-version
-or equivalent change tracking
-
-⸻
-
-34. Deletion Synchronization
-
-A deleted mobile note MUST eventually be removed from the watch.
-
-Recommended flow:
-
-Mobile
-   ↓
-deletedAt = timestamp
-   ↓
-Sync
-   ↓
-Watch removes note
-   ↓
-Sync confirmed
-   ↓
-Mobile can permanently clean record
-
-⸻
-
-35. Sync Payload
-
-The synchronization protocol MUST be versioned.
-
-Example request:
-
-{
-  "type": "SYNC_REQUEST",
-  "protocolVersion": 1
-}
-
-Example data:
-
-{
-  "type": "SYNC_DATA",
-  "protocolVersion": 1,
-  "notes": [
-    {
-      "id": "note-001",
-      "folderId": "folder-work",
-      "title": "API Architecture",
-      "description": "Use Redis for caching...",
-      "isPinned": true,
-      "updatedAt": 1750000000000
-    }
-  ]
-}
-
-Completion:
-
-{
-  "type": "SYNC_COMPLETE",
-  "protocolVersion": 1
-}
-
-The actual transport mechanism MUST be determined from the supported Zepp OS APIs during the communication POC.
-
-⸻
-
-36. Sync Integrity
-
-Synchronization MUST be atomic from the user’s perspective.
-
-The system MUST avoid a state where:
-
-Half of the notes updated
-Half of the notes corrupted
-
-If a synchronization operation fails:
-
-Previous valid watch state
-        ↓
-Sync failure
-        ↓
-Previous valid watch state remains
-
-The application SHOULD use temporary staging data before replacing the active dataset where necessary.
-
-⸻
-
-37. Sync Retry
-
-If synchronization fails:
-
-Sync Failed
-Reason:
-Connection interrupted
-        [Retry]
-
-The mobile database MUST remain unchanged.
-
-Existing watch data MUST remain available.
-
-⸻
-
-38. Sync Status
-
-Possible states:
-
-IDLE
-CONNECTING
-SYNCING
-SUCCESS
-FAILED
-DISCONNECTED
-
-The mobile application SHOULD show:
-
-Watch Connected
-Last synced:
-Today 7:42 PM
-
-⸻
-
-39. Watch Storage
-
-The watch MUST maintain its own local copy of synchronized notes.
-
-Example:
-
-Watch Storage
-│
-├── folders
-│
-└── notes
-
-After synchronization:
-
-Phone disconnected
-        ↓
-Open Notelet
-        ↓
-Notes still available
-
-This is a core acceptance requirement.
-
-⸻
-
-40. Watch Storage Limit
-
-The implementation MUST account for constrained watch storage.
-
-The application SHOULD expose storage information such as:
-
-Watch Notes
-37 notes
-28 KB used
-
-If a configured storage threshold is reached:
-
-Watch storage is almost full.
-Remove some notes before syncing more.
-
-Exact limits should be determined empirically for the supported devices rather than hardcoded from assumptions.
-
-⸻
-
-41. Conflict Resolution
-
-MVP policy:
-
-Mobile wins.
-
-The watch is read-only.
-
-Therefore, conflicting watch-side edits do not exist in the MVP.
-
-This eliminates the need for complex conflict resolution.
-
-⸻
-
-42. Watch-Side Editing
-
-Watch-side editing is explicitly excluded from MVP.
-
-Reason:
-
-* smartwatch typing is inconvenient;
-* it complicates synchronization;
-* it creates conflict resolution requirements;
-* the primary use case is quick information access.
-
-⸻
-
-43. Error Handling
-
-The application MUST handle:
-
-Communication failure
-
-Unable to connect to watch.
-
-Sync failure
-
-Sync failed.
-Your existing notes are safe.
-
-Storage failure
-
-Unable to save notes on watch.
-
-Invalid payload
-
-Unable to synchronize this note.
-
-Unsupported device
-
-This device is not currently supported.
-
-⸻
-
-44. Security Requirements
-
-For MVP:
+15. Security Requirements
 
 * Do not transmit data unnecessarily.
 * Do not log full note descriptions in production logs.
 * Do not expose note content in debugging output.
-* Protect local storage according to platform capabilities.
 * Do not encourage users to store passwords or authentication secrets as ordinary notes.
 
-Future cloud synchronization MUST use authenticated encrypted communication.
-
 ⸻
 
-45. Performance Requirements
-
-Mobile
-
-Local operations SHOULD feel instantaneous.
-
-Target:
-
-Create note: <100 ms
-Open note: <100 ms
-Search: <200 ms
-
-These are targets under normal dataset sizes, not hard guarantees.
-
-Watch
-
-The watch should:
-
-* launch quickly;
-* render lists efficiently;
-* avoid unnecessary animations;
-* avoid repeated database queries;
-* avoid unnecessary synchronization.
-
-⸻
-
-46. Dataset Assumptions
-
-MVP should be optimized for relatively small personal note collections.
-
-Initial target:
-
-Folders: <= 100
-Notes: <= 1,000
-
-The application SHOULD remain functional beyond these numbers but does not need to optimize aggressively for enterprise-scale datasets.
-
-⸻
-
-47. UX Requirements
-
-General
-
-The UI should be:
-
-* minimal;
-* clean;
-* readable;
-* fast;
-* accessible;
-* consistent.
-
-Avoid unnecessary:
-
-* animations;
-* gradients;
-* complex menus;
-* excessive buttons;
-* decorative UI.
-
-⸻
-
-48. Mobile Design Language
-
-Suggested structure:
-
-Home
-────────────────
-Search
-⭐ Pinned
-Recent
-Folders
-
-Primary actions should be obvious.
-
-Creating a note should require minimal steps.
-
-⸻
-
-49. Watch Design Language
-
-The watch should prioritize:
-
-Readability
-     ↓
-Navigation
-     ↓
-Speed
-     ↓
-Information density
-
-Not:
-
-Visual decoration
-
-⸻
-
-50. Empty States
-
-The application MUST provide meaningful empty states.
-
-No folders
-
-No folders yet.
-Create your first folder.
-
-No notes
-
-No notes yet.
-Create your first note.
-
-No pinned notes
-
-No pinned notes.
-
-Watch has no synchronized notes
-
-No notes on watch.
-Sync notes from your phone.
-
-⸻
-
-51. Loading States
-
-The application SHOULD display loading indicators for:
-
-* initial database loading;
-* synchronization;
-* watch connection;
-* large note operations.
-
-The watch should avoid unnecessarily long loading screens for local operations.
-
-⸻
-
-52. Project Structure
-
-Recommended conceptual mobile structure:
-
-src/
-├── components/
-├── screens/
-├── navigation/
-├── database/
-│   ├── schema/
-│   ├── migrations/
-│   ├── repositories/
-│   └── database.ts
-├── models/
-├── services/
-│   ├── notes/
-│   ├── folders/
-│   └── sync/
-├── hooks/
-├── utils/
-├── constants/
-└── types/
+16. Performance Requirements
 
 Watch:
 
-watch/
-├── app/
-├── pages/
-│   ├── home/
-│   ├── folders/
-│   ├── notes/
-│   ├── note-detail/
-│   ├── search/
-│   └── pinned/
-├── components/
-├── services/
-│   ├── storage/
-│   └── sync/
-├── models/
-├── utils/
-└── constants/
+* Launch quickly;
+* Render lists efficiently without unnecessary widget churn;
+* Avoid unnecessary re-syncing.
 
-The exact Zepp project structure MUST follow the current official SDK requirements.
+Dataset assumption: optimized for personal note collections (folders ≤ 100, notes ≤ 1,000). Does not need to optimize for larger scale.
 
 ⸻
 
-53. Code Quality Requirements
+17. UX Requirements
 
-The implementation MUST:
+General
 
-* use TypeScript where supported;
-* avoid any;
-* use strongly typed domain models;
-* separate UI from business logic;
-* separate database operations from UI;
-* separate synchronization logic from UI;
-* use reusable components;
-* avoid duplicated business logic;
-* use constants/enums for status values;
-* validate external synchronization payloads.
+The UI should be minimal, clean, readable, fast, and consistent. Avoid unnecessary animations, gradients, complex menus, excessive buttons, or decorative UI.
 
-⸻
+Empty States
 
-54. Domain Types
+* No folders yet → "No folders yet."
+* No notes yet → "No notes yet."
+* Note not found → "Note not found. It may have been removed on the last sync."
 
-Conceptually:
+Progressive Disclosure (Settings page)
 
-type Folder = {
-  id: string;
-  name: string;
-  createdAt: number;
-  updatedAt: number;
-};
-type Note = {
-  id: string;
-  folderId: string | null;
-  title: string;
-  description: string;
-  isPinned: boolean;
-  createdAt: number;
-  updatedAt: number;
-  deletedAt: number | null;
-};
-
-The actual implementation may adjust types according to the selected database and Zepp SDK.
+The add-folder/add-note forms are hidden by default behind a `+ Add folder` / `+ Add note` link, and revealed as a distinct step (with Add/Cancel actions) rather than shown permanently inline with the list — this was a direct fix for reported UX confusion when the form and list were both always visible at once.
 
 ⸻
 
-55. Testing Strategy
+18. Known Implementation Constraints
 
-Testing MUST cover four areas:
+These are hard constraints of the actual Zepp OS Simulator/runtime and Settings-page framework, not stylistic choices. Any future work on this codebase MUST account for them:
 
-Unit
-Integration
-Device
-End-to-End
-
-⸻
-
-56. Unit Tests
-
-Test:
-
-* note validation;
-* folder validation;
-* search;
-* sorting;
-* pinning;
-* synchronization diff calculation;
-* payload serialization;
-* payload validation;
-* deletion handling.
-
-Example:
-
-Given:
-100 local notes
-99 synchronized notes
-When:
-1 note changes
-Then:
-Sync engine returns exactly 1 update.
+* **`SCROLL_LIST` does not render** in this environment, regardless of configuration. All watch list UI (home, folder, note-detail pagination) is built from `BUTTON`/`TEXT` widgets instead.
+* **A `TEXT` widget layered visually on top of a `BUTTON` silently blocks that button's taps.** Rows must be a single `BUTTON` with combined text, not a background button plus overlay text.
+* **`hmApp.gotoPage` (the legacy navigation API) does not exist** in this environment — it throws `not a function`. Navigation uses `@zos/router`'s `push` instead.
+* **A Side Service's `this.call()` throws if the watch app isn't currently connected/foregrounded**, and an uncaught throw there can crash the whole Side Service instance, taking the watch app down with it. Any `onSettingsChange`-triggered push must be wrapped in try/catch.
+* **In the Settings App framework, mutating `this.state` alone does not redraw the page** — only an actual `settingsStorage.setItem()` write does. Any interactive control whose visible state should update immediately (a selection toggle, a form reveal/collapse) must pair its state change with a real storage write.
+* **A style-only change to an otherwise-identical `Button`** (same label, different color) does not reliably re-render, in both the watch and Settings-page environments — the button's label text itself must differ for a visual change to reliably appear.
+* **Multiple rapid `settingsStorage` writes from one user action can crash the Side Service's hot-reload** (`"exports is not defined"` / `"Cannot read properties of undefined (reading 'onInit')"`). Each CRUD action in the Settings page performs exactly one combined write, not several separate ones, to avoid this.
 
 ⸻
 
-57. Integration Tests
+19. Testing Strategy
 
-Test:
+No automated test suite exists. Verification has been manual and continuous: the Zepp OS Simulator, the Settings page's devtools panel, and a real Amazfit Bip Max.
 
-Create note
-    ↓
-SQLite
-    ↓
-Sync Manager
-    ↓
-Payload
+19.1 Manual Test Coverage To Date
 
-And:
+* Folder/note CRUD (create, delete, pin/unpin) via the Settings page
+* Watch navigation across all three screens (home → folder → note detail → back)
+* Manual sync (watch button) and Settings-triggered sync (`Check for updates`)
+* Font size and keep-awake controls on note detail
+* Round/square layout on a real Bip Max (found and fixed a top-margin clipping bug the Simulator never surfaced)
+* Full-replace sync correctness (deleting all data in Settings and confirming the watch clears to match, including previously-orphaned entries)
 
-Payload
-    ↓
-Watch receiver
-    ↓
-Watch storage
-    ↓
-UI
+19.2 Critical Acceptance Test
 
-⸻
+1. Create a folder and a note in the Settings page.
+2. Tap "Check for updates" (or open the watch app).
+3. Confirm the note appears on the watch.
+4. Disconnect the phone / close the Zepp app.
+5. Reopen Notelet on the watch and confirm the note is still fully readable.
 
-58. Device Testing Matrix
-
-Every release candidate MUST be tested on:
-
-Balance 3
-
-Round
-480 × 480
-Zepp OS 5.0
-API 4.4
-
-Balance Ultra
-
-Round
-480 × 480
-Zepp OS 5.0
-API 4.4
-
-Bip Max
-
-Square
-432 × 514
-Zepp OS 5.0
-API 4.4
+This scenario is exercisable today (unlike under the earlier separate-mobile-app design, where it depended on an unbuilt Bluetooth bridge), since the Settings page and watch are already connected through the platform's own working channel.
 
 ⸻
 
-59. Offline Test Cases
+20. Definition of Done
 
-The following MUST pass:
+A feature is Done only when it has: a working implementation, offline-safe behavior, error handling that preserves existing data on failure, and manual verification on both the Simulator and a real device where the change is device-shape-sensitive (layout, rendering).
 
-OFFLINE-001
-Create note without internet
-OFFLINE-002
-Edit note without internet
-OFFLINE-003
-Delete note without internet
-OFFLINE-004
-Search notes without internet
-OFFLINE-005
-Restart application while offline
-OFFLINE-006
-Read synchronized watch notes while phone is disconnected
+A task MUST NOT be considered complete merely because the UI appears to work in the Simulator alone — real-hardware testing has already caught at least one bug (§18, §19.1) the Simulator did not.
 
 ⸻
 
-60. Synchronization Test Cases
+21. Core Success Criterion
 
-SYNC-001
-Sync one new note
-SYNC-002
-Sync 10 new notes
-SYNC-003
-Update synchronized note
-SYNC-004
-Delete synchronized note
-SYNC-005
-Sync pinned status change
-SYNC-006
-Sync folder change
-SYNC-007
-Retry failed sync
-SYNC-008
-Disconnect during sync
-SYNC-009
-Repeat same sync
-SYNC-010
-Verify no duplicate notes
-
-⸻
-
-61. Critical End-to-End Test
-
-The following scenario MUST pass before MVP release:
-
-1. Create a folder on mobile.
-2. Create a note.
-3. Save the note.
-4. Select the note for synchronization.
-5. Synchronize with watch.
-6. Open the note on watch.
-7. Disconnect phone.
-8. Disable internet.
-9. Close Notelet.
-10. Reopen Notelet on watch.
-11. Open the same note.
-12. Verify the complete text is still available.
-
-Expected result:
-
-The note remains fully accessible offline.
-
-⸻
-
-62. Communication Proof-of-Concept
-
-Before full development, implement:
-
-POC-001
-Mobile → Watch "Hello Notelet"
-POC-002
-Watch stores payload
-POC-003
-Phone disconnected
-POC-004
-Watch displays stored payload
-POC-005
-Application restarted
-POC-006
-Payload remains available
-
-If any of these fail, stop and resolve the communication/storage architecture before implementing the complete application.
-
-⸻
-
-63. Development Phases
-
-Phase 0 — Platform Validation
-
-Tasks:
-
-- Verify Zepp OS SDK version
-- Verify API 4.4 compatibility
-- Verify target devices
-- Verify communication APIs
-- Verify watch local storage
-
-Deliverable:
-
-Working Phone → Watch text POC.
-
-⸻
-
-Phase 1 — Watch Foundation
-
-Tasks:
-
-- Create Zepp project
-- Implement device detection/layout
-- Implement home screen
-- Implement folders
-- Implement notes
-- Implement note detail
-- Implement scrolling
-- Implement local storage
-
-Deliverable:
-
-Standalone offline watch note reader using mock data.
-
-⸻
-
-Phase 2 — Mobile Foundation
-
-Tasks:
-
-- Create React Native project
-- Configure TypeScript
-- Configure SQLite
-- Create database schema
-- Implement migrations
-- Implement repositories
-
-Deliverable:
-
-Offline mobile database.
-
-⸻
-
-Phase 3 — Mobile UI
-
-Tasks:
-
-- Home
-- Folders
-- Notes
-- Note editor
-- Search
-- Pinned
-- Recent
-
-Deliverable:
-
-Fully functional offline Notes app.
-
-⸻
-
-Phase 4 — Sync Engine
-
-Tasks:
-
-- Sync models
-- Sync protocol
-- Change detection
-- Create synchronization
-- Update synchronization
-- Delete synchronization
-- Error handling
-- Retry
-
-Deliverable:
-
-Reliable manual synchronization.
-
-⸻
-
-Phase 5 — Watch Integration
-
-Tasks:
-
-- Receive payload
-- Validate payload
-- Store notes
-- Update existing notes
-- Remove deleted notes
-- Display sync status
-
-Deliverable:
-
-Mobile → Watch synchronized notes.
-
-⸻
-
-Phase 6 — Device Adaptation
-
-Tasks:
-
-- Round layout
-- Square layout
-- Safe areas
-- Text sizing
-- Scrolling
-- Navigation
-
-Deliverable:
-
-Consistent experience on all three target devices.
-
-⸻
-
-Phase 7 — Testing
-
-Tasks:
-
-- Unit tests
-- Integration tests
-- Sync tests
-- Offline tests
-- Device tests
-- Performance tests
-
-Deliverable:
-
-MVP release candidate.
-
-⸻
-
-64. MVP Acceptance Criteria
-
-The MVP is considered complete only when all of the following are true:
-
-Mobile
-
-* User can create folders.
-* User can edit folders.
-* User can delete folders.
-* User can create notes.
-* User can edit notes.
-* User can delete notes.
-* User can search notes.
-* User can pin notes.
-* User can use all core features offline.
-
-Watch
-
-* Watch app launches successfully.
-* Folders are displayed.
-* Notes are displayed.
-* Notes can be opened.
-* Long notes can be scrolled.
-* Pinned notes are accessible.
-* Notes remain available offline.
-
-Synchronization
-
-* New notes sync.
-* Updated notes sync.
-* Deleted notes sync.
-* Duplicate notes are prevented.
-* Failed synchronization can be retried.
-* Existing data survives failed synchronization.
-* Incremental synchronization works.
-
-Devices
-
-* Balance 3 tested.
-* Balance Ultra tested.
-* Bip Max tested.
-* Round layout tested.
-* Square layout tested.
-
-⸻
-
-65. Future Architecture
-
-The system SHOULD be designed so that future versions can introduce:
-
-                 Notelet
-                    │
-        ┌───────────┼────────────┐
-        │           │            │
-      Mobile       Watch       Cloud
-        │                        │
-        │                     Backup
-        │                     Sync
-        │                        │
-        └────────────┬───────────┘
-                     │
-                    AI
-                     │
-          ┌──────────┼──────────┐
-          │          │          │
-       Semantic    Summary    Related
-        Search      Notes      Notes
-
-Potential future features:
-
-V1.1
-
-* Automatic sync
-* Recently viewed notes
-* Better watch search
-* Storage management
-* Sorting
-
-V2
-
-* Cloud backup
-* User accounts
-* Multi-device synchronization
-* Restore
-
-V3
-
-* AI semantic search
-* AI summaries
-* Automatic categorization
-* Related notes
-* Natural-language note discovery
-
-⸻
-
-66. Important Agent Instructions
-
-An AI development agent implementing Notelet MUST follow these rules:
-
-Rule 1
-
-Do not start by building the entire application.
-
-First validate Zepp phone/watch communication.
-
-Rule 2
-
-Do not add a backend for MVP.
-
-The application must be local/offline-first.
-
-Rule 3
-
-Do not implement watch-side editing.
-
-The watch is read-only in MVP.
-
-Rule 4
-
-Do not implement AI features in MVP.
-
-Keep the architecture extensible, but focus on core functionality.
-
-Rule 5
-
-Do not hardcode one screen size.
-
-Support:
-
-480 × 480 round
-432 × 514 square
-
-Rule 6
-
-Do not duplicate business logic for each watch model.
-
-Use device-adaptive UI.
-
-Rule 7
-
-Mobile is the source of truth.
-
-Watch data is a synchronized cache/local copy.
-
-Rule 8
-
-Never lose existing data because synchronization failed.
-
-Synchronization must be recoverable.
-
-Rule 9
-
-Use strongly typed models.
-
-Avoid any.
-
-Rule 10
-
-Keep the watch application lightweight.
-
-Avoid unnecessary libraries, animations, network dependencies, and large payloads.
-
-⸻
-
-67. Recommended Implementation Order
-
-The development agent should execute the work in this exact order:
-
-1. Platform validation
-        ↓
-2. Zepp communication POC
-        ↓
-3. Watch local-storage POC
-        ↓
-4. Watch mock-data UI
-        ↓
-5. Mobile project setup
-        ↓
-6. Mobile SQLite
-        ↓
-7. Folder CRUD
-        ↓
-8. Note CRUD
-        ↓
-9. Search + Pin
-        ↓
-10. Mobile offline testing
-        ↓
-11. Sync protocol
-        ↓
-12. Mobile → Watch sync
-        ↓
-13. Incremental sync
-        ↓
-14. Delete sync
-        ↓
-15. Sync error recovery
-        ↓
-16. Round UI optimization
-        ↓
-17. Square UI optimization
-        ↓
-18. Device testing
-        ↓
-19. Performance testing
-        ↓
-20. MVP release
-
-⸻
-
-68. Definition of Done
-
-A feature is Done only when:
-
-Implementation
-      +
-Type safety
-      +
-Error handling
-      +
-Offline behavior
-      +
-Unit/integration tests where applicable
-      +
-UI validation
-      +
-Target-device validation where applicable
-
-A task MUST NOT be considered complete merely because the UI appears to work.
-
-⸻
-
-69. Final Product Architecture
-
-The intended MVP should ultimately look like:
-
-                         NOTELET
-                            │
-              ┌─────────────┴─────────────┐
-              │                           │
-         MOBILE APP                  ZEPP WATCH APP
-              │                           │
-       ┌──────┴──────┐             ┌─────┴──────┐
-       │             │             │            │
-    Note UI       SQLite       Watch UI     Local DB
-       │             │             │            │
-       └──────┬──────┘             └─────┬──────┘
-              │                          │
-              │      Sync Manager        │
-              └────────────┬─────────────┘
-                           │
-                    Zepp Communication
-                           │
-          ┌────────────────┼────────────────┐
-          │                │                │
-      Balance 3      Balance Ultra      Bip Max
-      480×480          480×480          432×514
-       Round             Round            Square
-
-Core success criterion
-
-The entire product ultimately needs to deliver one simple experience:
-
-Create a note on your phone → sync it to your watch → disconnect everything → open Notelet on your watch → read the note.
+Create a note in Settings → sync it to your watch → disconnect everything → open Notelet on your watch → read the note.
 
 If that experience is fast, reliable, and genuinely pleasant, Notelet has achieved its core purpose.
-
-⸻
-
-70. Implementation Status & Findings (Post-Hoc)
-
-This section records what was actually built against this spec, and — more importantly — what real implementation work revealed that this spec could not have known in advance. It supplements, not replaces, the requirements above.
-
-70.1 Phase Status
-
-Phase 0 (Platform validation) — Partial. See §70.2: the phone↔watch communication path assumed by this spec does not exist as documented; a real but unbuilt alternative was identified.
-
-Phase 1 (Watch foundation) — Done. Home, folder, and note-detail screens, adaptive round/square layout, local offline storage.
-
-Phase 2 (Mobile foundation) — Done. Expo/TypeScript project, SQLite schema, migrations, repositories.
-
-Phase 3 (Mobile UI) — Done. Folders, notes, search, pinned, recent, note editor.
-
-Phase 4 (Sync engine) — Done against a mock transport. Protocol, incremental change detection, retry, and error handling are implemented and tested, but never against a real phone↔watch connection (see §70.2).
-
-Phase 5 (Watch integration) — Done, with one material deviation from this spec: see §70.3.
-
-Phase 6 (Device adaptation) — Done, and unlike the other phases this one WAS verified on physical hardware (Amazfit Bip Max) mid-project — see §70.4.
-
-Phase 7 (Testing) — Not started as an automated suite. Manual verification happened continuously throughout development instead (see §70.5).
-
-⸻
-
-70.2 Communication POC Finding: No Third-Party App Channel Exists
-
-SRS §9 required validating the real Zepp OS phone↔watch communication APIs before building the full sync architecture. That validation happened — late, after Phases 2–6 were already built out of the prescribed order — and it surfaced a fact this spec's architecture (§8, §69) assumed away:
-
-There is no documented channel between a separate third-party mobile app and a Zepp OS mini-program's Side Service. Checked directly against docs.zepp.com. The only sanctioned Side Service communication paths are:
-  - Device App ↔ Side Service, via Bluetooth, but confined to the Zepp app's own process
-  - Side Service ↔ Settings App, via shared settingsStorage
-  - Side Service ↔ a remote server, via fetch — excluded here by Rule 2 (no backend)
-
-None of these let the separate "Notelet" mobile app (mobile/) hand data to the watch's app-side service directly. This is not a bug to fix in this codebase; it is a real gap in the platform's supported architecture for this exact product shape (an independent branded companion app, not the Zepp app itself).
-
-The one real bypass identified: @zos/ble (confirmed against installed @zeppos/device-types definitions, API 3.0+) lets the watch's Device App act as a full BLE Central — scanning for and connecting directly to any BLE peripheral, bypassing the Zepp app entirely. If the mobile app advertised itself as a custom BLE peripheral (GATT server), the watch could connect straight to it.
-
-What stands between here and that working: real BLE peripheral/GATT-server capability in React Native/Expo. No currently-maintained, verified library provides this — the most commonly cited package's own description identifies it as a peripheral simulator for testing, not a working implementation. Building this for real requires a custom native module (CoreBluetooth CBPeripheralManager on iOS, BluetoothGattServer on Android). The watch-side BLE Central transport and a shared chunked-protocol codec were built and cross-verified for byte-for-byte interoperability (utils/ble/ and mobile/src/services/sync/ble/), but none of it has run against real Bluetooth hardware, and the mobile-side peripheral itself remains unbuilt.
-
-⸻
-
-70.3 Deviation: Settings-Page CRUD as Interim Data Source
-
-Because §70.2's bridge doesn't exist yet, the watch had no real data to display beyond hardcoded mock notes. Per direct instruction, the phone-side Settings mini-program (setting/index.js) was extended with folder/note CRUD (create, delete, pin/unpin) that writes to settingsStorage, which app-side/index.js's PULL_SYNC now serves to the watch.
-
-This is an explicit, temporary deviation from this spec's architecture, not a replacement for it. §11–12 (mobile app owns note/folder management) and Rule 3 (watch is read-only) still hold — the Settings page is not "the mobile app," and the watch still never edits anything. But it does mean a second, separate CRUD surface exists today outside the mobile/ app, purely to make the product testable before the real bridge exists. Once §70.2's bridge is built, this should be retired in favor of the real mobile app's data.
-
-All hardcoded mock/seed data (the original 5-note, 3-folder catalog referenced throughout early development) has since been removed from the codebase; an untouched install now starts genuinely empty on both the watch and in Settings.
-
-70.3.1 Sync model correction. The original watch-side merge (utils/syncMerge.js) applied incoming changes as an incremental, tombstone-based merge: entities were only removed from the watch if explicitly flagged deleted in the payload. This left real, reproduced orphaned data on the watch — the original mock notes stayed permanently stuck (including showing up under Pinned) after the mock data was deleted from the source code entirely, because no tombstone was ever generated for ids that simply stopped being served. Given the Settings page always sends its complete current list rather than a diff, the merge was changed to a full replace: the watch's local folders/notes now become exactly what the latest payload contains, full stop. This is correct specifically because the current data source (Settings) is a complete snapshot every time; if a future real bridge instead streams incremental changes (as the mobile Phase 4 sync engine's sync_metadata-based diffing already does), this watch-side logic would need to move back toward tombstone-aware merging for that source.
-
-⸻
-
-70.4 Real-Device Verification (Phase 6)
-
-Unlike every other phase, device adaptation was actually checked against physical hardware mid-project (an Amazfit Bip Max), not simulator-only. That check found a real defect the simulator never surfaced: on real hardware, the folder-name and note-title text sat close enough to the top bezel/status-bar area to look clipped. Layout constants for both square-target pages were adjusted to add top clearance, deriving dependent row/section offsets from the title's own position so the fix can't silently drift out of sync again. Round-display margins were not touched, since the issue was specific to the square target's tighter default margin.
-
-This is the only requirement in this document that has real-hardware confirmation as of this writing. Everything else in Phase 6 (round safe-area math, square margin ratios) is verified by geometry and Simulator testing only.
-
-⸻
-
-70.5 Environment-Specific Constraints Found During Implementation
-
-These are not requirements changes — they are hard constraints of the actual Zepp OS Simulator/runtime and Settings-page framework encountered while building this spec, recorded here so a future implementer doesn't rediscover them the hard way:
-
-- SCROLL_LIST does not render in the current environment, regardless of configuration (verified against sane geometry, flat data, full item_config, and image_view present). All watch list UI (home, folder, note-detail pagination) is built from BUTTON and TEXT widgets instead. A TEXT widget layered visually on top of a BUTTON also silently blocks that button's taps — rows must be a single BUTTON with combined text, not a background button plus overlay text.
-
-- hmApp.gotoPage (the legacy navigation API) does not exist in this environment — it throws "not a function." Navigation uses @zos/router's push instead, which is the documented modern replacement.
-
-- A Side Service's this.call() (pushing to the Device App) throws if the watch app isn't currently connected/foregrounded, and an uncaught throw there was observed to crash the whole Side Service instance, taking the watch app down with it. Any onSettingsChange-triggered push must be wrapped defensively.
-
-- In the phone-side Settings App framework, mutating this.state does not, by itself, cause the page to redraw — only an actual settingsStorage.setItem() write does. Any interactive control whose visible state should update immediately (a selection toggle, a form reveal/collapse) must pair its state change with a real (even if functionally redundant) storage write, or the UI will silently desync from the underlying state until some other action forces a redraw.
-
-- A style-only change to an otherwise-identical Button (same label, different color) does not reliably re-render either, in both the watch and the Settings-page environments — the button's label text itself must differ for a visual change to reliably appear.
-
-⸻
-
-70.6 Manual Testing Performed
-
-No automated test suite exists yet (Phase 7 proper). In its place, this project was manually exercised continuously through the Zepp OS Simulator, the Settings-page devtools panel, and a real Amazfit Bip Max over the course of development — covering folder/note CRUD (create, delete, pin/unpin) via Settings, watch navigation across all three screens, manual and Settings-triggered sync, font-size and keep-awake controls on note-detail, and the round/square layout adjustments in §70.4. This is real coverage, but it is manual and ad hoc, not the committed automated suite §55–58 call for.
