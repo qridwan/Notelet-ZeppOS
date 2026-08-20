@@ -1,11 +1,14 @@
 import * as hmUI from '@zos/ui'
 import { getDeviceInfo } from '@zos/device'
 import { px } from '@zos/utils'
+import { SQUARE_MARGIN_RATIO, safeMargin } from './../../utils/layout'
 
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo()
 
-export const CONTENT_X = px(24)
-export const CONTENT_W = DEVICE_WIDTH - px(48)
+// SRS #27: square-display margin, shared with the home/folder layouts.
+const MARGIN = safeMargin(DEVICE_WIDTH, SQUARE_MARGIN_RATIO)
+export const CONTENT_X = MARGIN
+export const CONTENT_W = DEVICE_WIDTH - MARGIN * 2
 
 export const SCROLL_CONTAINER = {
   x: px(0),
@@ -36,9 +39,9 @@ export const DESCRIPTION_TEXT_STYLE = {
 }
 
 export const NOT_FOUND_TEXT_STYLE = {
-  x: px(20),
+  x: MARGIN,
   y: px(0),
-  w: DEVICE_WIDTH - px(40),
+  w: DEVICE_WIDTH - MARGIN * 2,
   h: DEVICE_HEIGHT,
   color: 0xaaaaaa,
   text_size: px(28),

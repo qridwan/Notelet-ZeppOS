@@ -1,13 +1,22 @@
 import * as hmUI from '@zos/ui'
 import { getDeviceInfo } from '@zos/device'
 import { px } from '@zos/utils'
+import { SQUARE_MARGIN_RATIO, safeMargin } from './../../utils/layout'
 
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo()
 
+// SRS #27: square (Bip Max) uses a tighter margin than round, plus its
+// extra vertical space for a taller list.
+const MARGIN = safeMargin(DEVICE_WIDTH, SQUARE_MARGIN_RATIO)
+const LIST_W = DEVICE_WIDTH - MARGIN * 2
+const PIN_W = px(44)
+const TEXT_X = px(16)
+const TEXT_W = LIST_W - TEXT_X - PIN_W - px(8)
+
 export const TITLE_TEXT_STYLE = {
-  x: px(0),
+  x: MARGIN,
   y: px(20),
-  w: DEVICE_WIDTH,
+  w: DEVICE_WIDTH - MARGIN * 2,
   h: px(50),
   color: 0xffffff,
   text_size: px(32),
@@ -16,9 +25,9 @@ export const TITLE_TEXT_STYLE = {
 }
 
 export const TIPS_TEXT_STYLE = {
-  x: px(20),
+  x: MARGIN,
   y: px(100),
-  w: DEVICE_WIDTH - px(40),
+  w: DEVICE_WIDTH - MARGIN * 2,
   h: DEVICE_HEIGHT - px(160),
   color: 0xaaaaaa,
   text_size: px(28),
@@ -37,9 +46,9 @@ export const NOTE_LIST = {
       item_bg_radius: px(16),
       text_view: [
         {
-          x: px(16),
+          x: TEXT_X,
           y: px(8),
-          w: DEVICE_WIDTH - px(110),
+          w: TEXT_W,
           h: px(38),
           key: 'title',
           color: 0xffffff,
@@ -48,9 +57,9 @@ export const NOTE_LIST = {
           text_style: hmUI.text_style.ELLIPSIS
         },
         {
-          x: px(16),
+          x: TEXT_X,
           y: px(52),
-          w: DEVICE_WIDTH - px(110),
+          w: TEXT_W,
           h: px(38),
           key: 'preview',
           color: 0x999999,
@@ -59,9 +68,9 @@ export const NOTE_LIST = {
           text_style: hmUI.text_style.ELLIPSIS
         },
         {
-          x: DEVICE_WIDTH - px(90),
+          x: LIST_W - PIN_W - px(4),
           y: px(0),
-          w: px(50),
+          w: PIN_W,
           h: px(104),
           key: 'pinMark',
           color: 0xffcc00,
@@ -74,8 +83,8 @@ export const NOTE_LIST = {
     }
   ],
   item_config_count: 1,
-  x: px(20),
+  x: MARGIN,
   y: px(76),
-  h: DEVICE_HEIGHT - px(90),
-  w: DEVICE_WIDTH - px(40)
+  h: DEVICE_HEIGHT - px(92),
+  w: LIST_W
 }

@@ -49,7 +49,7 @@ Notelet/
 | 3 — Mobile UI | Screens for folders, notes, search, pinned, recent, note editor | Done |
 | 4 — Sync engine | Protocol, change detection, retry, error handling | Done (against a mock transport — see below) |
 | 5 — Watch integration | Receive/validate/apply sync payloads, local storage, sync status | Done (against app-side's mock payload — see below) |
-| 6 — Device adaptation | Round/square layout polish | Partial (base layouts adapt by device width) |
+| 6 — Device adaptation | Round safe area, square space use, consistent margins across all watch screens | Done (verified by geometry, not yet on a physical device) |
 | 7 — Testing | Unit/integration/device/E2E | Not started |
 
 The mobile app and watch app are currently independent — there is no live sync between them yet. The watch app runs entirely on seeded mock data (`utils/constants.js`).
@@ -78,6 +78,12 @@ Scan the QR code from `zeus dev` with the Zepp app to sideload onto a paired wat
 `utils/syncStore.js`, `utils/syncMerge.js`, `utils/payloadValidation.js`, `utils/syncStatus.js`, and `utils/syncClient.js` implement the watch's half of sync (SRS §39–41): pull a `PULL_SYNC` payload from `app-side`, validate its shape, and merge it into the watch's own `folders`/`notes` JSON files — upserting changed entities and removing deleted ones — then record `lastSyncedAt`/status for the home screen. The watch pages (`page/home`, `page/folder`, `page/note-detail`) only ever read from this local store, never live from `app-side`, which is what keeps notes available after the phone disconnects.
 
 As with the mobile sync engine (Phase 4), the real transport is still unbuilt — `app-side/index.js`'s `PULL_SYNC` handler serves the same mock catalog (`utils/constants.js`) converted into the wire format, standing in for what will eventually be the real mobile app's data once Phase 0's communication POC picks the concrete Zepp SDK APIs. Swapping that in only changes `buildSyncPayload()` in `app-side/index.js` — the validation, merge, and storage logic on the watch doesn't change.
+
+## Device Adaptation (Phase 6)
+
+`utils/layout.js` defines the safe-margin ratios every watch layout file shares: a wider margin on round displays (Balance 3 / Balance Ultra, 480×480), where content near the bezel corners gets visually clipped, and a tighter one on square (Bip Max, 432×514), which uses nearly its full rectangle. Each `*.page.r.layout.js` / `*.page.s.layout.js` pair computes its list/text bounds from this shared margin against its own `DEVICE_WIDTH`, rather than hard-coded pixel offsets per screen — so home, folder, and note-detail stay visually consistent, and a fourth screen added later gets the same treatment for free. This also fixed a pre-existing bug where the folder screen's pin marker was positioned against the full device width instead of the (narrower) list container, which would have clipped it on-device.
+
+This has been verified by geometry (margins, list/text widths recomputed and checked non-negative and sane for both 480 and 432 device widths) and code review, not yet against a physical Balance 3 / Balance Ultra / Bip Max or the Zepp OS Simulator — that's the Phase 7 device-testing matrix (SRS §58).
 
 ## Running the Mobile App
 

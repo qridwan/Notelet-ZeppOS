@@ -2,8 +2,18 @@ import * as hmUI from '@zos/ui'
 import { getText } from '@zos/i18n'
 import { getDeviceInfo } from '@zos/device'
 import { px } from '@zos/utils'
+import { SQUARE_MARGIN_RATIO, safeMargin } from './../../utils/layout'
 
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo()
+
+// SRS #27: square (Bip Max) has flat corners and extra vertical space
+// (432x514) — a tighter margin and a slightly taller list use that space
+// instead of mirroring the round display's wider safe area.
+const MARGIN = safeMargin(DEVICE_WIDTH, SQUARE_MARGIN_RATIO)
+const LIST_W = DEVICE_WIDTH - MARGIN * 2
+const ICON_X = px(12)
+const ICON_W = px(40)
+const LABEL_X = ICON_X + ICON_W + px(8)
 
 export const TITLE_TEXT_STYLE = {
   text: getText('appName'),
@@ -19,9 +29,9 @@ export const TITLE_TEXT_STYLE = {
 
 export const TIPS_TEXT_STYLE = {
   text: getText('noFolders'),
-  x: px(20),
+  x: MARGIN,
   y: px(100),
-  w: DEVICE_WIDTH - px(40),
+  w: DEVICE_WIDTH - MARGIN * 2,
   h: DEVICE_HEIGHT - px(160),
   color: 0xaaaaaa,
   text_size: px(28),
@@ -31,7 +41,7 @@ export const TIPS_TEXT_STYLE = {
 }
 
 export const HOME_LIST = {
-  item_height: px(90),
+  item_height: px(94),
   item_space: px(8),
   item_config: [
     {
@@ -40,10 +50,10 @@ export const HOME_LIST = {
       item_bg_radius: px(16),
       text_view: [
         {
-          x: px(70),
+          x: LABEL_X,
           y: px(0),
-          w: DEVICE_WIDTH - px(70) - px(40),
-          h: px(90),
+          w: LIST_W - LABEL_X - px(12),
+          h: px(94),
           key: 'label',
           color: 0xffffff,
           text_size: px(32),
@@ -51,10 +61,10 @@ export const HOME_LIST = {
           align_v: hmUI.align.CENTER_V
         },
         {
-          x: px(20),
+          x: ICON_X,
           y: px(0),
-          w: px(40),
-          h: px(90),
+          w: ICON_W,
+          h: px(94),
           key: 'iconText',
           color: 0xffcc00,
           text_size: px(34),
@@ -66,8 +76,8 @@ export const HOME_LIST = {
     }
   ],
   item_config_count: 1,
-  x: px(20),
-  y: px(84),
-  h: DEVICE_HEIGHT - px(100),
-  w: DEVICE_WIDTH - px(40)
+  x: MARGIN,
+  y: px(76),
+  h: DEVICE_HEIGHT - px(92),
+  w: LIST_W
 }

@@ -2,8 +2,17 @@ import * as hmUI from '@zos/ui'
 import { getText } from '@zos/i18n'
 import { getDeviceInfo } from '@zos/device'
 import { px } from '@zos/utils'
+import { ROUND_MARGIN_RATIO, safeMargin } from './../../utils/layout'
 
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo()
+
+// SRS #26: round-display safe area — keeps list rows and text away from the
+// bezel corners where a rectangular layout would otherwise get clipped.
+const MARGIN = safeMargin(DEVICE_WIDTH, ROUND_MARGIN_RATIO)
+const LIST_W = DEVICE_WIDTH - MARGIN * 2
+const ICON_X = px(16)
+const ICON_W = px(50)
+const LABEL_X = ICON_X + ICON_W + px(10)
 
 export const TITLE_TEXT_STYLE = {
   text: getText('appName'),
@@ -19,9 +28,9 @@ export const TITLE_TEXT_STYLE = {
 
 export const TIPS_TEXT_STYLE = {
   text: getText('noFolders'),
-  x: px(30),
+  x: MARGIN,
   y: px(140),
-  w: DEVICE_WIDTH - px(60),
+  w: DEVICE_WIDTH - MARGIN * 2,
   h: DEVICE_HEIGHT - px(200),
   color: 0xaaaaaa,
   text_size: px(28),
@@ -40,9 +49,9 @@ export const HOME_LIST = {
       item_bg_radius: px(20),
       text_view: [
         {
-          x: px(90),
+          x: LABEL_X,
           y: px(0),
-          w: DEVICE_WIDTH - px(90) - px(50),
+          w: LIST_W - LABEL_X - px(16),
           h: px(96),
           key: 'label',
           color: 0xffffff,
@@ -51,9 +60,9 @@ export const HOME_LIST = {
           align_v: hmUI.align.CENTER_V
         },
         {
-          x: px(30),
+          x: ICON_X,
           y: px(0),
-          w: px(50),
+          w: ICON_W,
           h: px(96),
           key: 'iconText',
           color: 0xffcc00,
@@ -66,8 +75,8 @@ export const HOME_LIST = {
     }
   ],
   item_config_count: 1,
-  x: px(50),
+  x: MARGIN,
   y: px(120),
   h: DEVICE_HEIGHT - px(140),
-  w: DEVICE_WIDTH - px(100)
+  w: LIST_W
 }

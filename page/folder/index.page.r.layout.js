@@ -1,13 +1,21 @@
 import * as hmUI from '@zos/ui'
 import { getDeviceInfo } from '@zos/device'
 import { px } from '@zos/utils'
+import { ROUND_MARGIN_RATIO, safeMargin } from './../../utils/layout'
 
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo()
 
+// SRS #26: round-display safe area.
+const MARGIN = safeMargin(DEVICE_WIDTH, ROUND_MARGIN_RATIO)
+const LIST_W = DEVICE_WIDTH - MARGIN * 2
+const PIN_W = px(50)
+const TEXT_X = px(20)
+const TEXT_W = LIST_W - TEXT_X - PIN_W - px(10)
+
 export const TITLE_TEXT_STYLE = {
-  x: px(0),
+  x: MARGIN,
   y: px(50),
-  w: DEVICE_WIDTH,
+  w: DEVICE_WIDTH - MARGIN * 2,
   h: px(50),
   color: 0xffffff,
   text_size: px(32),
@@ -16,9 +24,9 @@ export const TITLE_TEXT_STYLE = {
 }
 
 export const TIPS_TEXT_STYLE = {
-  x: px(30),
+  x: MARGIN,
   y: px(140),
-  w: DEVICE_WIDTH - px(60),
+  w: DEVICE_WIDTH - MARGIN * 2,
   h: DEVICE_HEIGHT - px(200),
   color: 0xaaaaaa,
   text_size: px(28),
@@ -37,9 +45,9 @@ export const NOTE_LIST = {
       item_bg_radius: px(20),
       text_view: [
         {
-          x: px(24),
+          x: TEXT_X,
           y: px(10),
-          w: DEVICE_WIDTH - px(140),
+          w: TEXT_W,
           h: px(40),
           key: 'title',
           color: 0xffffff,
@@ -48,9 +56,9 @@ export const NOTE_LIST = {
           text_style: hmUI.text_style.ELLIPSIS
         },
         {
-          x: px(24),
+          x: TEXT_X,
           y: px(56),
-          w: DEVICE_WIDTH - px(140),
+          w: TEXT_W,
           h: px(40),
           key: 'preview',
           color: 0x999999,
@@ -59,9 +67,9 @@ export const NOTE_LIST = {
           text_style: hmUI.text_style.ELLIPSIS
         },
         {
-          x: DEVICE_WIDTH - px(110),
+          x: LIST_W - PIN_W - px(4),
           y: px(0),
-          w: px(60),
+          w: PIN_W,
           h: px(110),
           key: 'pinMark',
           color: 0xffcc00,
@@ -74,8 +82,8 @@ export const NOTE_LIST = {
     }
   ],
   item_config_count: 1,
-  x: px(40),
+  x: MARGIN,
   y: px(110),
   h: DEVICE_HEIGHT - px(130),
-  w: DEVICE_WIDTH - px(80)
+  w: LIST_W
 }

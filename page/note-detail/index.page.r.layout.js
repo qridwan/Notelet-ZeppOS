@@ -1,11 +1,14 @@
 import * as hmUI from '@zos/ui'
 import { getDeviceInfo } from '@zos/device'
 import { px } from '@zos/utils'
+import { ROUND_MARGIN_RATIO, safeMargin } from './../../utils/layout'
 
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo()
 
-export const CONTENT_X = px(50)
-export const CONTENT_W = DEVICE_WIDTH - px(100)
+// SRS #26: round-display safe area, shared with the home/folder layouts.
+const MARGIN = safeMargin(DEVICE_WIDTH, ROUND_MARGIN_RATIO)
+export const CONTENT_X = MARGIN
+export const CONTENT_W = DEVICE_WIDTH - MARGIN * 2
 
 export const SCROLL_CONTAINER = {
   x: px(0),
@@ -36,9 +39,9 @@ export const DESCRIPTION_TEXT_STYLE = {
 }
 
 export const NOT_FOUND_TEXT_STYLE = {
-  x: px(30),
+  x: MARGIN,
   y: px(0),
-  w: DEVICE_WIDTH - px(60),
+  w: DEVICE_WIDTH - MARGIN * 2,
   h: DEVICE_HEIGHT,
   color: 0xaaaaaa,
   text_size: px(28),
