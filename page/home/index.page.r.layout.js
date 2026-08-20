@@ -10,9 +10,6 @@ export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo()
 // bezel corners where a rectangular layout would otherwise get clipped.
 const MARGIN = safeMargin(DEVICE_WIDTH, ROUND_MARGIN_RATIO)
 const LIST_W = DEVICE_WIDTH - MARGIN * 2
-const ICON_X = px(16)
-const ICON_W = px(50)
-const LABEL_X = ICON_X + ICON_W + px(10)
 
 export const TITLE_TEXT_STYLE = {
   text: getText('appName'),
@@ -39,44 +36,20 @@ export const TIPS_TEXT_STYLE = {
   text_style: hmUI.text_style.WRAP
 }
 
-export const HOME_LIST = {
-  item_height: px(96),
-  item_space: px(8),
-  item_config: [
-    {
-      type_id: 1,
-      item_bg_color: 0x222222,
-      item_bg_radius: px(20),
-      text_view: [
-        {
-          x: LABEL_X,
-          y: px(0),
-          w: LIST_W - LABEL_X - px(16),
-          h: px(96),
-          key: 'label',
-          color: 0xffffff,
-          text_size: px(32),
-          align_h: hmUI.align.LEFT,
-          align_v: hmUI.align.CENTER_V
-        },
-        {
-          x: ICON_X,
-          y: px(0),
-          w: ICON_W,
-          h: px(96),
-          key: 'iconText',
-          color: 0xffcc00,
-          text_size: px(36),
-          align_h: hmUI.align.LEFT,
-          align_v: hmUI.align.CENTER_V
-        }
-      ],
-      text_view_count: 2
-    }
-  ],
-  item_config_count: 1,
-  x: MARGIN,
-  y: px(120),
-  h: DEVICE_HEIGHT - px(140),
-  w: LIST_W
+// SCROLL_LIST does not render in the current environment. A separate TEXT
+// widget layered on top of a BUTTON also silently blocks its taps (verified),
+// so each row is a single BUTTON with the icon+label combined into its own
+// text — the only combination confirmed to both render and stay tappable.
+export const ROW_X = MARGIN
+export const ROW_Y = px(120)
+export const ROW_W = LIST_W
+export const ROW_H = px(96)
+export const ROW_SPACE = px(8)
+
+export const ROW_BUTTON_STYLE = {
+  normal_color: 0x222222,
+  press_color: 0x333333,
+  radius: px(20),
+  color: 0xffffff,
+  text_size: px(30)
 }

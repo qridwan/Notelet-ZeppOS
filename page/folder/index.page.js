@@ -1,14 +1,20 @@
 import * as hmUI from '@zos/ui'
-import hmApp from '@zos/app'
+import { push } from '@zos/router'
 import { log as Logger } from '@zos/utils'
 
 import { BasePage } from '@zeppos/zml/base-page'
 import {
+  DEVICE_WIDTH,
+  DEVICE_HEIGHT,
   TITLE_TEXT_STYLE,
   TIPS_TEXT_STYLE,
-  NOTE_LIST
+  ROW_X,
+  ROW_Y,
+  ROW_W,
+  ROW_H,
+  ROW_SPACE,
+  ROW_BUTTON_STYLE
 } from 'zosLoader:./index.page.[pf].layout.js'
-import { getScrollListDataConfig, truncate } from './../../utils/index'
 import { getNotesByFolder, getPinnedNotes } from './../../utils/syncStore'
 
 const logger = Logger.getLogger('notelet-folder')
@@ -20,7 +26,7 @@ Page(
       folderName: '',
       title: null,
       tipText: null,
-      list: null,
+      rowWidgets: [],
       notes: []
     },
     onInit(query) {
@@ -31,6 +37,18 @@ Page(
     },
     build() {
       logger.debug('folder build invoked')
+
+      // Defensive: pushing a new page doesn't reliably clear the previous
+      // page's widgets first in this environment (verified — a stale title
+      // from the page underneath was bleeding through), so every page starts
+      // by repainting its own full-screen background.
+      hmUI.createWidget(hmUI.widget.FILL_RECT, {
+        x: 0,
+        y: 0,
+        w: DEVICE_WIDTH,
+        h: DEVICE_HEIGHT,
+        color: 0x000000
+      })
 
       this.state.title = hmUI.createWidget(hmUI.widget.TEXT, {
         ...TITLE_TEXT_STYLE,
@@ -49,54 +67,46 @@ Page(
       this.state.notes = folderId === '__pinned__' ? getPinnedNotes() : getNotesByFolder(folderId)
       this.renderList()
     },
+    // Row widgets are rebuilt on every refresh rather than diffed/reused —
+    // SCROLL_LIST does not render in the current environment, and per-folder
+    // note counts are small enough (SRS #46) that this is fine. Each row is
+    // a single BUTTON: a separate TEXT widget layered on top silently blocks
+    // its taps in this environment.
     renderList() {
-      const { notes, list } = this.state
+      const { notes } = this.state
+
+      this.state.rowWidgets.forEach((widget) => hmUI.deleteWidget(widget))
+      this.state.rowWidgets = []
+      this.state.tipText && hmUI.deleteWidget(this.state.tipText)
+      this.state.tipText = null
 
       if (notes.length === 0) {
-        !this.state.tipText &&
-          (this.state.tipText = hmUI.createWidget(hmUI.widget.TEXT, {
-            ...TIPS_TEXT_STYLE,
-            text: 'No notes yet.'
-          }))
+        this.state.tipText = hmUI.createWidget(hmUI.widget.TEXT, {
+          ...TIPS_TEXT_STYLE,
+          text: 'No notes yet.'
+        })
         return
       }
 
-      const items = notes.map((note) => ({
-        id: note.id,
-        title: note.title,
-        preview: truncate(note.description, 40),
-        pinMark: note.isPinned ? '⭐' : ''
-      }))
-
-      const dataTypeConfig = getScrollListDataConfig(-1, items.length)
-
-      if (list) {
-        list.setProperty(hmUI.prop.UPDATE_DATA, {
-          data_array: items,
-          data_count: items.length,
-          data_type_config: [{ start: 0, end: items.length, type_id: 1 }],
-          data_type_config_count: 1,
-          on_page: 1
+      this.state.rowWidgets = notes.map((note, index) =>
+        hmUI.createWidget(hmUI.widget.BUTTON, {
+          ...ROW_BUTTON_STYLE,
+          x: ROW_X,
+          y: ROW_Y + index * (ROW_H + ROW_SPACE),
+          w: ROW_W,
+          h: ROW_H,
+          text: note.isPinned ? `⭐ ${note.title}` : note.title,
+          click_func: () => this.onNoteClick(index)
         })
-      } else {
-        this.state.list = hmUI.createWidget(hmUI.widget.SCROLL_LIST, {
-          ...NOTE_LIST,
-          data_array: items,
-          data_count: items.length,
-          data_type_config: dataTypeConfig,
-          data_type_config_count: dataTypeConfig.length,
-          on_page: 1,
-          item_click_func: (list, index) => this.onNoteClick(index)
-        })
-      }
+      )
     },
     onNoteClick(index) {
       const note = this.state.notes[index]
       if (!note) return
 
-      hmApp.gotoPage({
+      push({
         url: 'page/note-detail/index.page',
-        param: JSON.stringify({ id: note.id })
+        params: JSON.stringify({ id: note.id })
       })
     }
   })

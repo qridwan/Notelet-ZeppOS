@@ -1,14 +1,21 @@
 import * as hmUI from '@zos/ui'
-import hmApp from '@zos/app'
+import { push } from '@zos/router'
 import { log as Logger } from '@zos/utils'
 
 import { BasePage } from '@zeppos/zml/base-page'
 import {
+  DEVICE_WIDTH,
+  DEVICE_HEIGHT,
   TITLE_TEXT_STYLE,
   TIPS_TEXT_STYLE,
-  HOME_LIST
+  ROW_X,
+  ROW_Y,
+  ROW_W,
+  ROW_H,
+  ROW_SPACE,
+  ROW_BUTTON_STYLE
 } from 'zosLoader:./index.page.[pf].layout.js'
-import { getScrollListDataConfig, formatTime } from './../../utils/index'
+import { formatTime } from './../../utils/index'
 import { getFolders } from './../../utils/syncStore'
 import { getSyncStatus } from './../../utils/syncStatus'
 import { runSync } from './../../utils/syncClient'
@@ -21,7 +28,7 @@ Page(
     state: {
       title: null,
       tipText: null,
-      list: null,
+      rowWidgets: [],
       items: []
     },
     onInit() {
@@ -29,6 +36,18 @@ Page(
     },
     build() {
       logger.debug('home build invoked')
+
+      // Defensive: navigating between pages doesn't reliably clear the
+      // previous page's widgets first in this environment (verified — a
+      // stale title bled through on the folder screen), so every page
+      // starts by repainting its own full-screen background.
+      hmUI.createWidget(hmUI.widget.FILL_RECT, {
+        x: 0,
+        y: 0,
+        w: DEVICE_WIDTH,
+        h: DEVICE_HEIGHT,
+        color: 0x000000
+      })
 
       this.state.title = hmUI.createWidget(hmUI.widget.TEXT, {
         ...TITLE_TEXT_STYLE
@@ -47,7 +66,7 @@ Page(
       runSync(this.request.bind(this))
         .then(() => this.loadFromLocalStore())
         .catch((error) => {
-          logger.error('sync failed', error?.message)
+          logger.error('sync failed', error && error.message)
           this.loadFromLocalStore()
         })
     },
@@ -75,54 +94,44 @@ Page(
       this.state.items = items
       this.renderList()
     },
+    // Row widgets are rebuilt on every refresh rather than diffed/reused —
+    // this list is small (SRS #46: folders <= 100) so the simplicity is
+    // worth more than the extra churn. Each row is a single BUTTON: a
+    // separate TEXT widget layered on top silently blocks its taps in this
+    // environment, so icon+label are combined into the button's own text.
     renderList() {
-      const { items, list } = this.state
+      const { items } = this.state
+
+      this.state.rowWidgets.forEach((widget) => hmUI.deleteWidget(widget))
+      this.state.rowWidgets = []
+      this.state.tipText && hmUI.deleteWidget(this.state.tipText)
+      this.state.tipText = null
 
       if (items.length === 0) {
-        !this.state.tipText &&
-          (this.state.tipText = hmUI.createWidget(hmUI.widget.TEXT, { ...TIPS_TEXT_STYLE }))
+        this.state.tipText = hmUI.createWidget(hmUI.widget.TEXT, { ...TIPS_TEXT_STYLE })
         return
       }
 
-      const dataTypeConfig = getScrollListDataConfig(-1, items.length)
-
-      if (list) {
-        list.setProperty(hmUI.prop.UPDATE_DATA, {
-          data_array: items,
-          data_count: items.length,
-          data_type_config: [{ start: 0, end: items.length, type_id: 1 }],
-          data_type_config_count: 1,
-          on_page: 1
+      this.state.rowWidgets = items.map((item, index) =>
+        hmUI.createWidget(hmUI.widget.BUTTON, {
+          ...ROW_BUTTON_STYLE,
+          x: ROW_X,
+          y: ROW_Y + index * (ROW_H + ROW_SPACE),
+          w: ROW_W,
+          h: ROW_H,
+          text: `${item.iconText} ${item.label}`.trim(),
+          click_func: () => this.onItemClick(index)
         })
-      } else {
-        this.state.list = hmUI.createWidget(hmUI.widget.SCROLL_LIST, {
-          ...HOME_LIST,
-          data_array: items,
-          data_count: items.length,
-          data_type_config: dataTypeConfig,
-          data_type_config_count: dataTypeConfig.length,
-          on_page: 1,
-          item_click_func: (list, index) => this.onItemClick(index)
-        })
-      }
+      )
     },
     onItemClick(index) {
       const item = this.state.items[index]
       if (!item) return
 
       if (item.route.type === 'pinned') {
-        hmApp.gotoPage({
-          url: 'page/folder/index.page',
-          param: JSON.stringify({ folderId: '__pinned__', folderName: 'Pinned' })
-        })
+        this.goToFolder({ folderId: '__pinned__', folderName: 'Pinned' })
       } else if (item.route.type === 'folder') {
-        hmApp.gotoPage({
-          url: 'page/folder/index.page',
-          param: JSON.stringify({
-            folderId: item.route.folderId,
-            folderName: item.route.folderName
-          })
-        })
+        this.goToFolder({ folderId: item.route.folderId, folderName: item.route.folderName })
       } else if (item.route.type === 'search') {
         // Basic title search is a Phase 1 stretch goal (SRS #23); not part of the mock UI yet.
         hmUI.showToast({ text: 'Search coming soon' })
@@ -130,6 +139,12 @@ Page(
         hmUI.showToast({ text: 'Syncing…' })
         this.sync()
       }
+    },
+    goToFolder(params) {
+      push({
+        url: 'page/folder/index.page',
+        params: JSON.stringify(params)
+      })
     }
   })
 )

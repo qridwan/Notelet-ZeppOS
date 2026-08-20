@@ -28,14 +28,103 @@ export const TITLE_TEXT_STYLE = {
   text_style: hmUI.text_style.WRAP
 }
 
+// SCROLL_LIST does not render in the current environment, so long notes are
+// paginated instead of scrolled: NAV_Y reserves room at the bottom for
+// prev/next controls and a page indicator.
+export const NAV_Y = DEVICE_HEIGHT - px(64)
+
+// Reading controls (font size +/-, keep-awake toggle) sit in their own row
+// between the title and the description, so DESCRIPTION_TEXT_STYLE starts
+// below them rather than at a fixed offset from the title.
+export const CONTROL_Y = px(96)
+export const CONTROL_H = px(46)
+const CONTROL_GAP = px(8)
+const CONTROL_BTN_W = Math.floor((CONTENT_W - CONTROL_GAP * 2) / 3)
+
+const controlButtonBase = {
+  y: CONTROL_Y,
+  h: CONTROL_H,
+  radius: px(12),
+  text_size: px(22),
+  normal_color: 0x222222,
+  press_color: 0x333333,
+  color: 0xffffff
+}
+
+export const FONT_DEC_BUTTON_STYLE = {
+  ...controlButtonBase,
+  x: CONTENT_X,
+  w: CONTROL_BTN_W,
+  text: 'A−'
+}
+
+export const FONT_INC_BUTTON_STYLE = {
+  ...controlButtonBase,
+  x: CONTENT_X + CONTROL_BTN_W + CONTROL_GAP,
+  w: CONTROL_BTN_W,
+  text: 'A+'
+}
+
+export const KEEP_AWAKE_BUTTON_STYLE = {
+  ...controlButtonBase,
+  x: CONTENT_X + (CONTROL_BTN_W + CONTROL_GAP) * 2,
+  w: CONTROL_BTN_W,
+  text_size: px(18)
+}
+
+export const DESCRIPTION_BASE_FONT_SIZE = px(24)
+export const FONT_SIZE_STEP = px(4)
+export const FONT_SIZE_MIN = px(16)
+export const FONT_SIZE_MAX = px(36)
+
+const DESCRIPTION_Y = CONTROL_Y + CONTROL_H + px(8)
+
 export const DESCRIPTION_TEXT_STYLE = {
   x: CONTENT_X,
-  y: px(96),
+  y: DESCRIPTION_Y,
   w: CONTENT_W,
+  h: NAV_Y - DESCRIPTION_Y - px(8),
   color: 0xcccccc,
-  text_size: px(24),
+  text_size: DESCRIPTION_BASE_FONT_SIZE,
   align_h: hmUI.align.LEFT,
   text_style: hmUI.text_style.WRAP
+}
+
+export const PAGE_INDICATOR_STYLE = {
+  x: px(0),
+  y: NAV_Y,
+  w: DEVICE_WIDTH,
+  h: px(46),
+  color: 0x888888,
+  text_size: px(22),
+  align_h: hmUI.align.CENTER_H,
+  align_v: hmUI.align.CENTER_V
+}
+
+export const PREV_BUTTON_STYLE = {
+  x: CONTENT_X,
+  y: NAV_Y,
+  w: px(80),
+  h: px(50),
+  radius: px(14),
+  text: '‹ Prev',
+  text_size: px(22),
+  normal_color: 0x222222,
+  press_color: 0x333333,
+  color: 0xffffff
+}
+
+export const NEXT_BUTTON_STYLE = {
+  x: DEVICE_WIDTH - CONTENT_X - px(80),
+  y: NAV_Y,
+  w: px(80),
+  h: px(50),
+  radius: px(14),
+  text: 'Next ›',
+  text_size: px(22),
+  normal_color: 0x222222,
+  press_color: 0x333333,
+  color: 0xffffff
 }
 
 export const NOT_FOUND_TEXT_STYLE = {
