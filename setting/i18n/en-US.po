@@ -2,4 +2,55 @@ msgid "aboutTitle"
 msgstr "Notelet"
 
 msgid "aboutBody"
-msgstr "Your notes, always within reach. Manage folders and notes on the Notelet mobile app, then sync them to your watch."
+msgstr "Interim note management until the mobile app connects to your watch (see README). Folders and notes here sync to the watch."
+
+msgid "syncSectionTitle"
+msgstr "Sync"
+
+msgid "syncSummary"
+msgstr "Last checked {time} — {folders} folders, {notes} notes on watch."
+
+msgid "syncNeverSummary"
+msgstr "Not synced yet. Open Notelet on your watch, or check now."
+
+msgid "checkForUpdates"
+msgstr "Check for updates"
+
+msgid "foldersSectionTitle"
+msgstr "Folders"
+
+msgid "noFoldersYet"
+msgstr "No folders yet."
+
+msgid "newFolderName"
+msgstr "Folder name"
+
+msgid "addFolder"
+msgstr "Add folder"
+
+msgid "notesSectionTitle"
+msgstr "Notes"
+
+msgid "noNotesYet"
+msgstr "No notes yet."
+
+msgid "newNoteTitle"
+msgstr "Title"
+
+msgid "newNoteDescription"
+msgstr "Note text"
+
+msgid "addNote"
+msgstr "Add note"
+
+msgid "uncategorized"
+msgstr "Uncategorized"
+
+msgid "pin"
+msgstr "Pin"
+
+msgid "unpin"
+msgstr "Unpin"
+
+msgid "delete"
+msgstr "Delete"

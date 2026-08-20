@@ -62,13 +62,40 @@ Page(
     onDestroy() {
       logger.debug('home onDestroy invoked')
     },
+    // Pushed from app-side (Side Service) when the phone's Settings App
+    // writes a "check for updates" request — Settings App and this page
+    // can't call each other directly, only through the Side Service
+    // bridging shared settingsStorage to this.call() (see app-side/index.js).
+    onCall(req) {
+      if (req && req.type === 'FORCE_SYNC') {
+        hmUI.showToast({ text: 'Checking for updates…' })
+        this.sync()
+      }
+    },
     sync() {
       runSync(this.request.bind(this))
-        .then(() => this.loadFromLocalStore())
+        .then((summary) => {
+          this.loadFromLocalStore()
+          this.reportSyncStatus(summary)
+        })
         .catch((error) => {
           logger.error('sync failed', error && error.message)
           this.loadFromLocalStore()
         })
+    },
+    // Best-effort: lets the phone's Settings App show real sync numbers
+    // instead of nothing (settingsStorage is the only channel it shares
+    // with the Side Service). Never blocks the sync flow if it fails.
+    reportSyncStatus(summary) {
+      const status = getSyncStatus()
+      this.request({
+        method: 'REPORT_SYNC_STATUS',
+        params: {
+          lastSyncedAt: status.lastSyncedAt,
+          folderCount: summary.folderCount,
+          noteCount: summary.noteCount
+        }
+      }).catch((error) => logger.error('reportSyncStatus failed', error && error.message))
     },
     loadFromLocalStore() {
       const folders = getFolders()
