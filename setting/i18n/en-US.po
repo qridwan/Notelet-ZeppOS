@@ -1,5 +1,5 @@
-msgid "addTodo"
-msgstr "ADD TODO"
+msgid "aboutTitle"
+msgstr "Notelet"
 
-msgid "delete"
-msgstr "DELETE"
+msgid "aboutBody"
+msgstr "Your notes, always within reach. Manage folders and notes on the Notelet mobile app, then sync them to your watch."

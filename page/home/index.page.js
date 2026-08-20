@@ -1,177 +1,111 @@
 import * as hmUI from '@zos/ui'
-import { getText } from '@zos/i18n'
-import { getDeviceInfo, SCREEN_SHAPE_SQUARE } from '@zos/device'
+import hmApp from '@zos/app'
 import { log as Logger } from '@zos/utils'
 
 import { BasePage } from '@zeppos/zml/base-page'
 import {
   TITLE_TEXT_STYLE,
   TIPS_TEXT_STYLE,
-  SCROLL_LIST,
-  ADD_BUTTON
+  HOME_LIST
 } from 'zosLoader:./index.page.[pf].layout.js'
-import { readFileSync, writeFileSync } from './../../utils/fs'
 import { getScrollListDataConfig } from './../../utils/index'
 
-const logger = Logger.getLogger('todo-list-page')
+const logger = Logger.getLogger('notelet-home')
 
 Page(
   BasePage({
     state: {
-      scrollList: null,
+      title: null,
       tipText: null,
-      refreshText: null,
-      addButton: null,
-      dataList: readFileSync()
+      list: null,
+      items: []
     },
     onInit() {
-      logger.debug('page onInit invoked')
-      this.getTodoList()
+      logger.debug('home onInit invoked')
     },
     build() {
-      logger.debug('page build invoked')
+      logger.debug('home build invoked')
 
-      if (getDeviceInfo().screenShape !== SCREEN_SHAPE_SQUARE) {
-        this.state.title = hmUI.createWidget(hmUI.widget.TEXT, {
-          ...TITLE_TEXT_STYLE
-        })
-      }
-
-      this.state.addButton = hmUI.createWidget(hmUI.widget.BUTTON, {
-        ...ADD_BUTTON,
-        click_func: () => {
-          this.addRandomTodoItem()
-        }
+      this.state.title = hmUI.createWidget(hmUI.widget.TEXT, {
+        ...TITLE_TEXT_STYLE
       })
 
-      this.createAndUpdateList(false)
+      this.loadFolders()
     },
     onDestroy() {
-      logger.debug('page onDestroy invoked')
-      writeFileSync(this.state.dataList, false)
+      logger.debug('home onDestroy invoked')
     },
-    onCall(req) {
-      const dataList = req.result.map((i) => ({ name: i, img_src: 'delete.png' }))
-      logger.log('call dataList', dataList)
-      this.refreshAndUpdate(dataList)
-    },
-    getTodoList() {
-      this.request({
-        method: 'GET_TODO_LIST'
-      })
+    loadFolders() {
+      this.request({ method: 'GET_FOLDERS' })
         .then(({ result }) => {
-          this.state.dataList = result.map((d) => ({ name: d, img_src: 'delete.png' }))
-          this.createAndUpdateList()
+          const items = [
+            { iconText: '⭐', label: 'Pinned', route: { type: 'pinned' } },
+            ...result.map((folder) => ({
+              iconText: '📁',
+              label: folder.name,
+              route: { type: 'folder', folderId: folder.id, folderName: folder.name }
+            })),
+            { iconText: '🔍', label: 'Search', route: { type: 'search' } }
+          ]
+          this.state.items = items
+          this.renderList()
         })
-        .catch((res) => {
-          this.createAndUpdateList()
-        })
-    },
-    addRandomTodoItem() {
-      this.request({
-        method: 'ADD'
-      })
-        .then(({ result }) => {
-          this.state.dataList = result.map((d) => ({ name: d, img_src: 'delete.png' }))
-          this.createAndUpdateList()
-          hmUI.showToast({
-            text: getText('addSuccess')
-          })
-        })
-        .catch((res) => {
-          hmUI.showToast({
-            text: getText('addFailure')
-          })
+        .catch(() => {
+          this.renderList()
         })
     },
-    deleteTodoItem(index) {
-      this.request({
-        method: 'DELETE',
-        params: { index }
-      })
-        .then(({ result }) => {
-          this.state.scrollList.setProperty(hmUI.prop.DELETE_ITEM, { index: index })
-          this.state.dataList.splice(index, 1)
-          hmUI.showToast({
-            text: getText('deleteSuccess')
-          })
-        })
-        .catch((res) => {
-          hmUI.showToast({
-            text: getText('deleteFailure')
-          })
-        })
-    },
-    changeUI(showEmpty) {
-      const { dataList } = this.state
+    renderList() {
+      const { items, list } = this.state
 
-      if (showEmpty) {
-        if (dataList.length === 0) {
-          !this.state.tipText &&
-            (this.state.tipText = hmUI.createWidget(hmUI.widget.TEXT, {
-              ...TIPS_TEXT_STYLE
-            }))
-        }
-        const isTip = dataList.length === 0
-
-        this.state.refreshText && this.state.refreshText.setProperty(hmUI.prop.VISIBLE, false)
-        this.state.tipText && this.state.tipText.setProperty(hmUI.prop.VISIBLE, isTip)
-        this.state.scrollList && this.state.scrollList.setProperty(hmUI.prop.VISIBLE, !isTip)
-      } else {
-        // 占位刷新
-        !this.state.refreshText &&
-          (this.state.refreshText = hmUI.createWidget(hmUI.widget.TEXT, {
-            ...TIPS_TEXT_STYLE,
-            text: ' '
-          }))
-
-        this.state.tipText && this.state.tipText.setProperty(hmUI.prop.VISIBLE, false)
-        this.state.refreshText.setProperty(hmUI.prop.VISIBLE, true)
-        this.state.scrollList && this.state.scrollList.setProperty(hmUI.prop.VISIBLE, false)
+      if (items.length === 0) {
+        !this.state.tipText &&
+          (this.state.tipText = hmUI.createWidget(hmUI.widget.TEXT, { ...TIPS_TEXT_STYLE }))
+        return
       }
-    },
-    createAndUpdateList(showEmpty = true) {
-      const _scrollListItemClick = (list, index, key) => {
-        if (key === 'img_src') {
-          this.deleteTodoItem(index)
-        }
-      }
-      const { scrollList, dataList } = this.state
-      this.changeUI(showEmpty)
-      const dataTypeConfig = getScrollListDataConfig(
-        dataList.length === 0 ? -1 : 0,
-        dataList.length
-      )
-      if (scrollList) {
-        scrollList.setProperty(hmUI.prop.UPDATE_DATA, {
-          data_array: dataList,
-          data_count: dataList.length,
-          data_type_config: [{ start: 0, end: dataList.length, type_id: 2 }],
-          data_type_config_count: dataTypeConfig.length,
+
+      const dataTypeConfig = getScrollListDataConfig(-1, items.length)
+
+      if (list) {
+        list.setProperty(hmUI.prop.UPDATE_DATA, {
+          data_array: items,
+          data_count: items.length,
+          data_type_config: [{ start: 0, end: items.length, type_id: 1 }],
+          data_type_config_count: 1,
           on_page: 1
         })
       } else {
-        this.state.scrollList = hmUI.createWidget(hmUI.widget.SCROLL_LIST, {
-          ...(SCROLL_LIST || {}),
-          data_array: dataList,
-          data_count: dataList.length,
+        this.state.list = hmUI.createWidget(hmUI.widget.SCROLL_LIST, {
+          ...HOME_LIST,
+          data_array: items,
+          data_count: items.length,
           data_type_config: dataTypeConfig,
           data_type_config_count: dataTypeConfig.length,
-          item_enable_horizon_drag: true,
-          item_drag_max_distance: -120,
           on_page: 1,
-          item_click_func: _scrollListItemClick
+          item_click_func: (list, index) => this.onItemClick(index)
         })
       }
     },
-    refreshAndUpdate(dataList = []) {
-      this.state.dataList = []
-      this.createAndUpdateList(false)
+    onItemClick(index) {
+      const item = this.state.items[index]
+      if (!item) return
 
-      setTimeout(() => {
-        this.state.dataList = dataList
-        this.createAndUpdateList()
-      }, 20)
+      if (item.route.type === 'pinned') {
+        hmApp.gotoPage({
+          url: 'page/folder/index.page',
+          param: JSON.stringify({ folderId: '__pinned__', folderName: 'Pinned' })
+        })
+      } else if (item.route.type === 'folder') {
+        hmApp.gotoPage({
+          url: 'page/folder/index.page',
+          param: JSON.stringify({
+            folderId: item.route.folderId,
+            folderName: item.route.folderName
+          })
+        })
+      } else if (item.route.type === 'search') {
+        // Basic title search is a Phase 1 stretch goal (SRS #23); not part of the mock UI yet.
+        hmUI.showToast({ text: 'Search coming soon' })
+      }
     }
   })
 )

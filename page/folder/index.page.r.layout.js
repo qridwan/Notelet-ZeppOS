@@ -1,24 +1,21 @@
 import * as hmUI from '@zos/ui'
-import { getText } from '@zos/i18n'
 import { getDeviceInfo } from '@zos/device'
 import { px } from '@zos/utils'
 
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo()
 
 export const TITLE_TEXT_STYLE = {
-  text: getText('appName'),
   x: px(0),
-  y: px(56),
+  y: px(50),
   w: DEVICE_WIDTH,
   h: px(50),
   color: 0xffffff,
-  text_size: px(36),
+  text_size: px(32),
   align_h: hmUI.align.CENTER_H,
-  text_style: hmUI.text_style.NONE
+  text_style: hmUI.text_style.ELLIPSIS
 }
 
 export const TIPS_TEXT_STYLE = {
-  text: getText('noFolders'),
   x: px(30),
   y: px(140),
   w: DEVICE_WIDTH - px(60),
@@ -30,9 +27,9 @@ export const TIPS_TEXT_STYLE = {
   text_style: hmUI.text_style.WRAP
 }
 
-export const HOME_LIST = {
-  item_height: px(96),
-  item_space: px(8),
+export const NOTE_LIST = {
+  item_height: px(110),
+  item_space: px(10),
   item_config: [
     {
       type_id: 1,
@@ -40,34 +37,45 @@ export const HOME_LIST = {
       item_bg_radius: px(20),
       text_view: [
         {
-          x: px(90),
-          y: px(0),
-          w: DEVICE_WIDTH - px(90) - px(50),
-          h: px(96),
-          key: 'label',
+          x: px(24),
+          y: px(10),
+          w: DEVICE_WIDTH - px(140),
+          h: px(40),
+          key: 'title',
           color: 0xffffff,
-          text_size: px(32),
+          text_size: px(30),
           align_h: hmUI.align.LEFT,
-          align_v: hmUI.align.CENTER_V
+          text_style: hmUI.text_style.ELLIPSIS
         },
         {
-          x: px(30),
-          y: px(0),
-          w: px(50),
-          h: px(96),
-          key: 'iconText',
-          color: 0xffcc00,
-          text_size: px(36),
+          x: px(24),
+          y: px(56),
+          w: DEVICE_WIDTH - px(140),
+          h: px(40),
+          key: 'preview',
+          color: 0x999999,
+          text_size: px(22),
           align_h: hmUI.align.LEFT,
+          text_style: hmUI.text_style.ELLIPSIS
+        },
+        {
+          x: DEVICE_WIDTH - px(110),
+          y: px(0),
+          w: px(60),
+          h: px(110),
+          key: 'pinMark',
+          color: 0xffcc00,
+          text_size: px(30),
+          align_h: hmUI.align.CENTER_H,
           align_v: hmUI.align.CENTER_V
         }
       ],
-      text_view_count: 2
+      text_view_count: 3
     }
   ],
   item_config_count: 1,
-  x: px(50),
-  y: px(120),
-  h: DEVICE_HEIGHT - px(140),
-  w: DEVICE_WIDTH - px(100)
+  x: px(40),
+  y: px(110),
+  h: DEVICE_HEIGHT - px(130),
+  w: DEVICE_WIDTH - px(80)
 }
