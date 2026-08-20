@@ -48,7 +48,7 @@ Notelet/
 | 2 — Mobile foundation | Expo project, SQLite schema, migrations, repositories | Done |
 | 3 — Mobile UI | Screens for folders, notes, search, pinned, recent, note editor | Done |
 | 4 — Sync engine | Protocol, change detection, retry, error handling | Done (against a mock transport — see below) |
-| 5 — Watch integration | Receive/apply real sync payloads | Not started |
+| 5 — Watch integration | Receive/validate/apply sync payloads, local storage, sync status | Done (against app-side's mock payload — see below) |
 | 6 — Device adaptation | Round/square layout polish | Partial (base layouts adapt by device width) |
 | 7 — Testing | Unit/integration/device/E2E | Not started |
 
@@ -71,7 +71,13 @@ zeus dev
 
 Scan the QR code from `zeus dev` with the Zepp app to sideload onto a paired watch, or open the project in the Zepp OS Simulator.
 
-**What to expect**: Home screen (Pinned / folders / Search) → tap a folder to list its notes → tap a note to read its full text with vertical scrolling. All data is local mock data; no phone connection is required.
+**What to expect**: on first launch, Home shows an empty state briefly, then syncs in the background and shows Pinned / folders / Search plus a "🔄 Last synced HH:MM" row — tap it to sync again on demand. Tap a folder to list its notes, tap a note to read its full text with vertical scrolling. Everything you see after that first sync is read from the watch's own local storage, not fetched live — turn off Bluetooth/close the Zepp app and reopen Notelet on the watch to confirm folders and notes are still there.
+
+## Watch-Side Sync (Phase 5)
+
+`utils/syncStore.js`, `utils/syncMerge.js`, `utils/payloadValidation.js`, `utils/syncStatus.js`, and `utils/syncClient.js` implement the watch's half of sync (SRS §39–41): pull a `PULL_SYNC` payload from `app-side`, validate its shape, and merge it into the watch's own `folders`/`notes` JSON files — upserting changed entities and removing deleted ones — then record `lastSyncedAt`/status for the home screen. The watch pages (`page/home`, `page/folder`, `page/note-detail`) only ever read from this local store, never live from `app-side`, which is what keeps notes available after the phone disconnects.
+
+As with the mobile sync engine (Phase 4), the real transport is still unbuilt — `app-side/index.js`'s `PULL_SYNC` handler serves the same mock catalog (`utils/constants.js`) converted into the wire format, standing in for what will eventually be the real mobile app's data once Phase 0's communication POC picks the concrete Zepp SDK APIs. Swapping that in only changes `buildSyncPayload()` in `app-side/index.js` — the validation, merge, and storage logic on the watch doesn't change.
 
 ## Running the Mobile App
 

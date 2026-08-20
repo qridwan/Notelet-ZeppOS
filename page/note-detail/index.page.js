@@ -10,6 +10,7 @@ import {
   DESCRIPTION_TEXT_STYLE,
   NOT_FOUND_TEXT_STYLE
 } from 'zosLoader:./index.page.[pf].layout.js'
+import { getNoteById } from './../../utils/syncStore'
 
 const logger = Logger.getLogger('notelet-note-detail')
 
@@ -41,17 +42,14 @@ Page(
       logger.debug('note-detail onDestroy invoked')
     },
     loadNote() {
-      this.request({ method: 'GET_NOTE', params: { id: this.state.noteId } })
-        .then(({ result }) => {
-          if (!result) {
-            this.showNotFound()
-            return
-          }
-          this.renderNote(result)
-        })
-        .catch(() => {
-          this.showNotFound()
-        })
+      // Local read (SRS #39): a note opened after the phone disconnects must
+      // still be fully available.
+      const note = getNoteById(this.state.noteId)
+      if (!note) {
+        this.showNotFound()
+        return
+      }
+      this.renderNote(note)
     },
     showNotFound() {
       this.state.notFoundText = hmUI.createWidget(hmUI.widget.TEXT, {

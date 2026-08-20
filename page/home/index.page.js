@@ -8,7 +8,11 @@ import {
   TIPS_TEXT_STYLE,
   HOME_LIST
 } from 'zosLoader:./index.page.[pf].layout.js'
-import { getScrollListDataConfig } from './../../utils/index'
+import { getScrollListDataConfig, formatTime } from './../../utils/index'
+import { getFolders } from './../../utils/syncStore'
+import { getSyncStatus } from './../../utils/syncStatus'
+import { runSync } from './../../utils/syncClient'
+import { SyncStatusValue } from './../../utils/constants'
 
 const logger = Logger.getLogger('notelet-home')
 
@@ -30,29 +34,46 @@ Page(
         ...TITLE_TEXT_STYLE
       })
 
-      this.loadFolders()
+      // Always show whatever is already stored locally first (SRS #39: notes
+      // must stay available even if the phone/sync is unreachable), then try
+      // a sync in the background and refresh once it settles.
+      this.loadFromLocalStore()
+      this.sync()
     },
     onDestroy() {
       logger.debug('home onDestroy invoked')
     },
-    loadFolders() {
-      this.request({ method: 'GET_FOLDERS' })
-        .then(({ result }) => {
-          const items = [
-            { iconText: '⭐', label: 'Pinned', route: { type: 'pinned' } },
-            ...result.map((folder) => ({
-              iconText: '📁',
-              label: folder.name,
-              route: { type: 'folder', folderId: folder.id, folderName: folder.name }
-            })),
-            { iconText: '🔍', label: 'Search', route: { type: 'search' } }
-          ]
-          this.state.items = items
-          this.renderList()
+    sync() {
+      runSync(this.request.bind(this))
+        .then(() => this.loadFromLocalStore())
+        .catch((error) => {
+          logger.error('sync failed', error?.message)
+          this.loadFromLocalStore()
         })
-        .catch(() => {
-          this.renderList()
-        })
+    },
+    loadFromLocalStore() {
+      const folders = getFolders()
+      const status = getSyncStatus()
+
+      let syncLabel = '🔄 Sync now'
+      if (status.status === SyncStatusValue.SYNCING) {
+        syncLabel = 'Syncing…'
+      } else if (status.lastSyncedAt) {
+        syncLabel = `🔄 Last synced ${formatTime(status.lastSyncedAt)}`
+      }
+
+      const items = [
+        { iconText: '⭐', label: 'Pinned', route: { type: 'pinned' } },
+        ...folders.map((folder) => ({
+          iconText: '📁',
+          label: folder.name,
+          route: { type: 'folder', folderId: folder.id, folderName: folder.name }
+        })),
+        { iconText: '🔍', label: 'Search', route: { type: 'search' } },
+        { iconText: '', label: syncLabel, route: { type: 'sync' } }
+      ]
+      this.state.items = items
+      this.renderList()
     },
     renderList() {
       const { items, list } = this.state
@@ -105,6 +126,9 @@ Page(
       } else if (item.route.type === 'search') {
         // Basic title search is a Phase 1 stretch goal (SRS #23); not part of the mock UI yet.
         hmUI.showToast({ text: 'Search coming soon' })
+      } else if (item.route.type === 'sync') {
+        hmUI.showToast({ text: 'Syncing…' })
+        this.sync()
       }
     }
   })

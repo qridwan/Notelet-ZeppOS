@@ -9,6 +9,7 @@ import {
   NOTE_LIST
 } from 'zosLoader:./index.page.[pf].layout.js'
 import { getScrollListDataConfig, truncate } from './../../utils/index'
+import { getNotesByFolder, getPinnedNotes } from './../../utils/syncStore'
 
 const logger = Logger.getLogger('notelet-folder')
 
@@ -43,18 +44,10 @@ Page(
     },
     loadNotes() {
       const { folderId } = this.state
-      const method = folderId === '__pinned__' ? 'GET_PINNED_NOTES' : 'GET_NOTES'
-      const params = folderId === '__pinned__' ? {} : { folderId }
-
-      this.request({ method, params })
-        .then(({ result }) => {
-          this.state.notes = result
-          this.renderList()
-        })
-        .catch(() => {
-          this.state.notes = []
-          this.renderList()
-        })
+      // Reads the watch's own local copy (SRS #39) — no request to app-side
+      // here, so this works whether or not the phone is connected.
+      this.state.notes = folderId === '__pinned__' ? getPinnedNotes() : getNotesByFolder(folderId)
+      this.renderList()
     },
     renderList() {
       const { notes, list } = this.state

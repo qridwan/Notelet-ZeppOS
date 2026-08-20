@@ -1,28 +1,45 @@
 import { BaseSideService } from '@zeppos/zml/base-side'
 
-import { MOCK_FOLDERS, MOCK_NOTES } from './../utils/constants'
+import { MOCK_FOLDERS, MOCK_NOTES, SYNC_PROTOCOL_VERSION } from './../utils/constants'
+
+function buildSyncPayload() {
+  return {
+    protocolVersion: SYNC_PROTOCOL_VERSION,
+    folders: MOCK_FOLDERS.map((folder) => ({
+      id: folder.id,
+      name: folder.name,
+      updatedAt: folder.updatedAt,
+      deleted: false
+    })),
+    notes: MOCK_NOTES.map((note) => ({
+      id: note.id,
+      folderId: note.folderId,
+      title: note.title,
+      description: note.description,
+      isPinned: note.isPinned,
+      updatedAt: note.updatedAt,
+      deleted: Boolean(note.deletedAt)
+    }))
+  }
+}
 
 /**
- * Phase 1 (SRS #63): serves mock folders/notes so the watch UI can be built and
- * tested standalone. Phase 5 replaces the data source here with the real
- * mobile -> watch sync payload, without changing the watch-side request contract.
+ * Phase 5 (SRS #63): the watch pulls a full sync payload through PULL_SYNC
+ * and applies it to its own local storage (utils/syncStore.js) so it keeps
+ * working after the phone disconnects — the watch pages never call this
+ * service directly for reads. Until Phase 0's communication POC settles how
+ * this app-side process actually reaches the mobile app's real SQLite data,
+ * PULL_SYNC serves the same mock catalog in the wire format
+ * mobile/src/services/sync/changeSet.ts produces — swapping the mock for a
+ * real bridge call only changes buildSyncPayload(), not the watch-side
+ * contract.
  */
 AppSideService(
   BaseSideService({
     onInit() {},
     onRequest(req, res) {
-      if (req.method === 'GET_FOLDERS') {
-        res(null, { result: MOCK_FOLDERS })
-      } else if (req.method === 'GET_NOTES') {
-        const { folderId } = req.params || {}
-        const notes = MOCK_NOTES.filter((n) => !n.deletedAt && (!folderId || n.folderId === folderId))
-        res(null, { result: notes })
-      } else if (req.method === 'GET_PINNED_NOTES') {
-        res(null, { result: MOCK_NOTES.filter((n) => !n.deletedAt && n.isPinned) })
-      } else if (req.method === 'GET_NOTE') {
-        const { id } = req.params || {}
-        const note = MOCK_NOTES.find((n) => n.id === id) || null
-        res(null, { result: note })
+      if (req.method === 'PULL_SYNC') {
+        res(null, { result: buildSyncPayload() })
       } else {
         res(new Error('Unknown method: ' + req.method))
       }

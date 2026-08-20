@@ -3,6 +3,13 @@ export function truncate(text, maxLength) {
   return text.length > maxLength ? text.slice(0, maxLength - 1) + '…' : text
 }
 
+export function formatTime(timestampMs) {
+  const date = new Date(timestampMs)
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
 export function getScrollListDataConfig(activeIndex, length) {
   const dataTypeConfig = []
   if (activeIndex === -1) {
