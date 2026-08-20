@@ -1,0 +1,59 @@
+{
+  "configVersion": "v3",
+  "app": {
+    "appType": "app",
+    "version": {
+      "code": 1,
+      "name": "1.0.0"
+    },
+    "appId": 29054,
+    "appName": "Notelet",
+    "icon": "icon.png",
+    "vender": "notelet",
+    "description": "Offline-first text notes, always within reach on your wrist."
+  },
+  "runtime": {
+    "apiVersion": {
+      "compatible": "4.4",
+      "target": "4.4",
+      "minVersion": "4.4"
+    }
+  },
+  "targets": {
+    "gt": {
+      "module": {
+        "page": {
+          "pages": [
+            "page/home/index.page",
+            "page/folder/index.page",
+            "page/note-detail/index.page"
+          ]
+        },
+        "app-side": {
+          "path": "app-side/index"
+        },
+        "setting": {
+          "path": "setting/index"
+        }
+      },
+      "platforms": [
+        {
+          "st": "r",
+          "dw": 480
+        },
+        {
+          "st": "s",
+          "dw": 432
+        }
+      ]
+    }
+  },
+  "permissions": ["data:os.device.info", "device:os.local_storage"],
+  "i18n": {
+    "en-US": {
+      "name": "Notelet"
+    }
+  },
+  "defaultLanguage": "en-US",
+  "debug": false
+}
