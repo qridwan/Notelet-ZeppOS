@@ -2,7 +2,7 @@
 
 Offline-first text notes, always within reach on your Amazfit watch.
 
-Full requirements: [.CLAUDE/srs.md](.CLAUDE/srs.md) (see §7.2 for why this is a single watch app, not a watch + separate mobile app).
+Full requirements: [docs/architecture.md](docs/architecture.md) (see §7.2 for why this is a single watch app, not a watch + separate mobile app).
 
 ## Overview
 
@@ -33,7 +33,7 @@ Notelet/
 
 | Phase | Scope | Status |
 |---|---|---|
-| Platform validation | Phone ↔ watch communication | Resolved — the Settings page's `settingsStorage` ↔ Side Service ↔ Device App channel *is* the real, working architecture (SRS §7) |
+| Platform validation | Phone ↔ watch communication | Resolved — the Settings page's `settingsStorage` ↔ Side Service ↔ Device App channel *is* the real, working architecture (docs/architecture.md §7) |
 | Watch foundation | Home/folder/note-detail screens, offline local storage | Done |
 | Settings CRUD | Folder/note create/delete/pin, sync trigger, sync status | Done — this is the permanent management surface, not a stand-in |
 | Watch sync | Pull, validate, and fully replace local data from Settings | Done |
@@ -42,7 +42,7 @@ Notelet/
 
 All hardcoded mock/seed data has been removed — an untouched install starts genuinely empty on both the watch and in Settings.
 
-See [.CLAUDE/srs.md](.CLAUDE/srs.md) §12 (sync model), §18 (implementation constraints), and §19 (test coverage) for detail.
+See [docs/architecture.md](docs/architecture.md) §12 (sync model), §18 (implementation constraints), and §19 (test coverage) for detail.
 
 ## Prerequisites
 
@@ -70,7 +70,7 @@ zeus preview
 
 ## Watch-Side Sync
 
-`utils/syncStore.js`, `utils/syncMerge.js`, `utils/payloadValidation.js`, `utils/syncStatus.js`, and `utils/syncClient.js` implement the watch's sync (SRS §12): pull a `PULL_SYNC` payload from `app-side`, validate its shape, and **fully replace** the watch's own `folders`/`notes` JSON files with it, then record `lastSyncedAt`/status for the home screen.
+`utils/syncStore.js`, `utils/syncMerge.js`, `utils/payloadValidation.js`, `utils/syncStatus.js`, and `utils/syncClient.js` implement the watch's sync (docs/architecture.md §12): pull a `PULL_SYNC` payload from `app-side`, validate its shape, and **fully replace** the watch's own `folders`/`notes` JSON files with it, then record `lastSyncedAt`/status for the home screen.
 
 This is a full replace rather than an incremental tombstone-based merge deliberately: `app-side` always serves the complete current list from Settings (not a diff), so anything the watch has stored that the payload doesn't mention gets dropped — not just entries explicitly flagged `deleted: true`. An earlier tombstone-only version left orphaned entries permanently stuck on the watch whenever their id just stopped being served (this happened for real: the original hardcoded mock notes stayed pinned on the watch forever after the mock data was removed from the code, since no tombstone existed for ids the payload had simply stopped mentioning).
 
@@ -85,16 +85,16 @@ for f in $(find . -path './node_modules' -prune -o -name '*.js' -print); do
 done
 ```
 
-There is no automated test suite (unit/integration/E2E). What exists instead is real, continuous manual testing throughout development — including on a physical Amazfit Bip Max, which is how the top-clipping layout bug (SRS §18) was actually found, and how several environment-specific bugs were caught along the way:
+There is no automated test suite (unit/integration/E2E). What exists instead is real, continuous manual testing throughout development — including on a physical Amazfit Bip Max, which is how the top-clipping layout bug (docs/architecture.md §18) was actually found, and how several environment-specific bugs were caught along the way:
 
 - `SCROLL_LIST` doesn't render at all in this environment — all lists are built from `BUTTON`/`TEXT` widgets instead
 - The legacy `hmApp.gotoPage` API doesn't exist — navigation uses `@zos/router`'s `push`
 - An unguarded Side Service `this.call()` can crash the whole Side Service (and take the watch app down with it) if the Device App isn't connected
 - In the Settings page, mutating state alone never redraws the page — only an actual `settingsStorage` write does
 
-Full details in [.CLAUDE/srs.md §18](.CLAUDE/srs.md).
+Full details in [docs/architecture.md §18](docs/architecture.md).
 
-The critical end-to-end acceptance test (SRS §19.2) — create a note, sync it, disconnect, read it offline on the watch — **can** be exercised today, since Settings and the watch are already connected through a real, working channel.
+The critical end-to-end acceptance test (docs/architecture.md §19.2) — create a note, sync it, disconnect, read it offline on the watch — **can** be exercised today, since Settings and the watch are already connected through a real, working channel.
 
 ## Design Principles
 
