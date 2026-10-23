@@ -14,9 +14,7 @@ const NOTELET_DATA_KEY = 'noteletData'
 // No mock data — an untouched install starts genuinely empty.
 const SEED_DATA = {
   folders: [],
-  notes: [],
-  deletedFolderIds: [],
-  deletedNoteIds: []
+  notes: []
 }
 
 // Brand logo (96px badge from notelet.png), inlined as a data URI because the
@@ -206,8 +204,6 @@ AppSettingsPage({
     settingsStorage: null,
     folders: [],
     notes: [],
-    deletedFolderIds: [],
-    deletedNoteIds: [],
     newNoteFolderId: null
   },
   loadState(settingsStorage) {
@@ -219,8 +215,6 @@ AppSettingsPage({
     const draft = data.draft || {}
     this.state.folders = data.folders || []
     this.state.notes = data.notes || []
-    this.state.deletedFolderIds = data.deletedFolderIds || []
-    this.state.deletedNoteIds = data.deletedNoteIds || []
 
     // undefined = never chosen -> default to the first folder; null = the
     // user explicitly picked Uncategorized; a deleted folder id -> reset.
@@ -242,8 +236,6 @@ AppSettingsPage({
       JSON.stringify({
         folders: this.state.folders,
         notes: this.state.notes,
-        deletedFolderIds: this.state.deletedFolderIds,
-        deletedNoteIds: this.state.deletedNoteIds,
         draft: {
           newNoteFolderId: this.state.newNoteFolderId
         }
@@ -268,7 +260,6 @@ AppSettingsPage({
     this.state.notes = this.state.notes.map((note) =>
       note.folderId === folderId ? { ...note, folderId: null, updatedAt: Date.now() } : note
     )
-    this.state.deletedFolderIds = [...this.state.deletedFolderIds, folderId]
     this.persist()
   },
   addNote(rawTitle) {
@@ -297,7 +288,6 @@ AppSettingsPage({
   },
   deleteNote(noteId) {
     this.state.notes = this.state.notes.filter((n) => n.id !== noteId)
-    this.state.deletedNoteIds = [...this.state.deletedNoteIds, noteId]
     this.persist()
   },
   togglePinned(noteId) {

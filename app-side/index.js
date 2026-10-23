@@ -28,49 +28,30 @@ function readJson(key, fallback) {
  * PULL_SYNC below just serves whatever is currently stored there. No mock
  * data — an untouched install starts genuinely empty.
  */
+// Deletions need no tombstones: the watch fully replaces its local copy
+// with this payload (utils/syncMerge.js), so anything absent here is removed.
 function buildSyncPayload() {
-  const data = readJson(NOTELET_DATA_KEY, {
-    folders: [],
-    notes: [],
-    deletedFolderIds: [],
-    deletedNoteIds: []
-  })
+  const data = readJson(NOTELET_DATA_KEY, { folders: [], notes: [] })
   const folders = data.folders || []
   const notes = data.notes || []
-  const deletedFolderIds = data.deletedFolderIds || []
-  const deletedNoteIds = data.deletedNoteIds || []
 
   return {
     protocolVersion: SYNC_PROTOCOL_VERSION,
-    folders: [
-      ...folders.map((folder) => ({
-        id: folder.id,
-        name: folder.name,
-        updatedAt: folder.updatedAt,
-        deleted: false
-      })),
-      ...deletedFolderIds.map((id) => ({ id, name: '', updatedAt: Date.now(), deleted: true }))
-    ],
-    notes: [
-      ...notes.map((note) => ({
-        id: note.id,
-        folderId: note.folderId,
-        title: note.title,
-        description: note.description,
-        isPinned: note.isPinned,
-        updatedAt: note.updatedAt,
-        deleted: false
-      })),
-      ...deletedNoteIds.map((id) => ({
-        id,
-        folderId: null,
-        title: '',
-        description: '',
-        isPinned: false,
-        updatedAt: Date.now(),
-        deleted: true
-      }))
-    ]
+    folders: folders.map((folder) => ({
+      id: folder.id,
+      name: folder.name,
+      updatedAt: folder.updatedAt,
+      deleted: false
+    })),
+    notes: notes.map((note) => ({
+      id: note.id,
+      folderId: note.folderId,
+      title: note.title,
+      description: note.description,
+      isPinned: note.isPinned,
+      updatedAt: note.updatedAt,
+      deleted: false
+    }))
   }
 }
 
