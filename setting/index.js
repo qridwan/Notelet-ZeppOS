@@ -90,6 +90,22 @@ const noteActionsStyle = {
 const actionLinkStyle = { fontSize: '13px', color: ACCENT, marginLeft: '16px' }
 const dangerLinkStyle = { fontSize: '13px', color: DANGER, marginLeft: '16px' }
 
+const STATUS_TONES = {
+  idle: { dot: '#9A9AA0', bg: '#F0F1F4', fg: '#6B6B70' },
+  ok: { dot: '#30A46C', bg: '#E6F6EC', fg: '#1F7A4D' },
+  warn: { dot: '#F5A524', bg: '#FFF4DD', fg: '#9A6700' }
+}
+
+const statTileStyle = {
+  flex: 1,
+  background: PAGE_BG,
+  borderRadius: '12px',
+  padding: '10px 12px'
+}
+
+const statValueStyle = { fontSize: '22px', fontWeight: 'bold', color: TEXT_PRIMARY }
+const statLabelStyle = { fontSize: '12px', color: TEXT_SECONDARY, marginTop: '2px' }
+
 const emptyStateStyle = {
   fontSize: '13px',
   color: TEXT_SECONDARY,
@@ -132,6 +148,17 @@ function folderChipStyle(active) {
     background: active ? ACCENT : SURFACE_MUTED,
     fontWeight: active ? 'bold' : 'normal'
   }
+}
+
+function timeAgo(timestamp) {
+  const diff = Math.max(0, Date.now() - timestamp)
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} hr ago`
+  const days = Math.floor(hours / 24)
+  return `${days} ${days === 1 ? 'day' : 'days'} ago`
 }
 
 function truncate(text, max) {
@@ -353,20 +380,91 @@ AppSettingsPage({
     )
   },
 
+  // Derives a single status from what both sides already report, so there
+  // is no extra state to persist: watch counts + last sync time come from the
+  // watch's REPORT_SYNC_STATUS, the pending request from FORCE_SYNC_KEY.
+  getSyncView(syncStatus) {
+    const requestedAt = Number(this.state.settingsStorage.getItem(FORCE_SYNC_KEY)) || 0
+    const lastSyncedAt = (syncStatus && syncStatus.lastSyncedAt) || 0
+    const { folders, notes } = this.state
+
+    if (requestedAt > lastSyncedAt) {
+      const stale = Date.now() - requestedAt > 2 * 60 * 1000
+      return {
+        tone: STATUS_TONES.warn,
+        badge: stale ? 'No response' : 'Waiting for watch…',
+        hint: stale
+          ? 'The watch did not answer. Open Notelet on your watch and keep it on screen, then try again.'
+          : 'Keep Notelet open on your watch. This updates automatically.',
+        button: stale ? 'Try again' : 'Request sent · Resend'
+      }
+    }
+    if (!lastSyncedAt) {
+      return {
+        tone: STATUS_TONES.idle,
+        badge: 'Not synced yet',
+        hint: 'Open Notelet on your watch, keep it on screen, then tap Sync now.',
+        button: 'Sync now'
+      }
+    }
+    const changed =
+      (syncStatus.folderCount ?? 0) !== folders.length ||
+      (syncStatus.noteCount ?? 0) !== notes.length ||
+      notes.some((n) => (n.updatedAt || 0) > lastSyncedAt) ||
+      folders.some((f) => (f.updatedAt || 0) > lastSyncedAt)
+    if (changed) {
+      return {
+        tone: STATUS_TONES.warn,
+        badge: 'Changes not on watch',
+        hint: `Last synced ${timeAgo(lastSyncedAt)}. Sync to send your latest changes.`,
+        button: 'Sync now'
+      }
+    }
+    return {
+      tone: STATUS_TONES.ok,
+      badge: 'Up to date',
+      hint: `Last synced ${timeAgo(lastSyncedAt)}.`,
+      button: 'Sync again'
+    }
+  },
+
   renderSyncCard(syncStatus) {
-    const summary = syncStatus
-      ? gettext('syncSummary')
-          .replace('{time}', new Date(syncStatus.lastSyncedAt || 0).toLocaleString())
-          .replace('{folders}', String(syncStatus.folderCount ?? 0))
-          .replace('{notes}', String(syncStatus.noteCount ?? 0))
-      : gettext('syncNeverSummary')
+    const view = this.getSyncView(syncStatus)
+    const watchFolders = syncStatus ? (syncStatus.folderCount ?? 0) : 0
+    const watchNotes = syncStatus ? (syncStatus.noteCount ?? 0) : 0
+
     return View({ style: cardStyle }, [
-      View({ style: { fontSize: '16px', fontWeight: 'bold', color: TEXT_PRIMARY } }, [
-        `${syncStatus ? '🟢' : '⚪️'} ${gettext('syncSectionTitle')}`
+      View({ style: sectionHeaderStyle }, [
+        View({ style: sectionTitleStyle }, [gettext('syncSectionTitle')]),
+        View(
+          {
+            style: {
+              fontSize: '12px',
+              fontWeight: 'bold',
+              color: view.tone.fg,
+              background: view.tone.bg,
+              borderRadius: '12px',
+              padding: '4px 10px'
+            }
+          },
+          [`● ${view.badge}`]
+        )
       ]),
-      View({ style: { ...rowMetaStyle, marginTop: '4px', marginBottom: '12px' } }, [summary]),
+      View({ style: { ...rowMetaStyle, marginTop: '0', marginBottom: '14px', fontSize: '13px' } }, [
+        view.hint
+      ]),
+      View({ style: { display: 'flex', flexDirection: 'row', marginBottom: '14px' } }, [
+        View({ style: { ...statTileStyle, marginRight: '10px' } }, [
+          View({ style: statValueStyle }, [String(watchFolders)]),
+          View({ style: statLabelStyle }, ['Folders on watch'])
+        ]),
+        View({ style: statTileStyle }, [
+          View({ style: statValueStyle }, [String(watchNotes)]),
+          View({ style: statLabelStyle }, ['Notes on watch'])
+        ])
+      ]),
       Button({
-        label: gettext('checkForUpdates'),
+        label: `⟳  ${view.button}`,
         style: primaryButtonStyle,
         onClick: () => this.requestSync()
       })
