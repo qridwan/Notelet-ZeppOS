@@ -60,3 +60,57 @@ msgstr "Save in"
 
 msgid "addNoteText"
 msgstr "Add text…"
+
+msgid "rename"
+msgstr "Rename"
+
+msgid "move"
+msgstr "Move"
+
+msgid "moveTo"
+msgstr "Move to"
+
+msgid "done"
+msgstr "Done"
+
+msgid "allNotes"
+msgstr "All"
+
+msgid "pinned"
+msgstr "Pinned"
+
+msgid "searchNotes"
+msgstr "Search notes"
+
+msgid "clear"
+msgstr "Clear"
+
+msgid "folder"
+msgstr "Folder"
+
+msgid "title"
+msgstr "Title"
+
+msgid "text"
+msgstr "Text"
+
+msgid "edit"
+msgstr "Edit"
+
+msgid "newNote"
+msgstr "New note"
+
+msgid "to"
+msgstr "in"
+
+msgid "emptyTitle"
+msgstr "No notes yet"
+
+msgid "emptyBody"
+msgstr "Notes you add here show up on your watch after you sync. Use folders to group them, like Groceries or Gym."
+
+msgid "foldersOnWatch"
+msgstr "Folders on watch"
+
+msgid "notesOnWatch"
+msgstr "Notes on watch"

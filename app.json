@@ -6,7 +6,7 @@
       "code": 1,
       "name": "1.0.0"
     },
-    "appId": 29054,
+    "appId": 1132527,
     "appName": "Notelet",
     "icon": "icon.png",
     "vender": "notelet",
@@ -23,11 +23,7 @@
     "gt": {
       "module": {
         "page": {
-          "pages": [
-            "page/home/index.page",
-            "page/folder/index.page",
-            "page/note-detail/index.page"
-          ]
+          "pages": ["page/home/index.page", "page/folder/index.page", "page/note-detail/index.page"]
         },
         "app-side": {
           "path": "app-side/index"
