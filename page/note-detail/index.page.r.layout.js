@@ -23,9 +23,12 @@ export const TITLE_TEXT_STYLE = {
   w: CONTENT_W,
   h: px(70),
   color: 0xffffff,
-  text_size: px(32),
+  text_size: px(28),
   align_h: hmUI.align.LEFT,
-  text_style: hmUI.text_style.WRAP
+  align_v: hmUI.align.CENTER_V,
+  // One line only: long titles end in "…" instead of wrapping into
+  // the reading controls below.
+  text_style: hmUI.text_style.ELLIPSIS
 }
 
 // SCROLL_LIST does not render in the current environment, so long notes are

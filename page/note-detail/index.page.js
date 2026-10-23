@@ -3,6 +3,8 @@ import { setPageBrightTime, resetPageBrightTime } from '@zos/display'
 import { log as Logger } from '@zos/utils'
 
 import { BasePage } from '@zeppos/zml/base-page'
+import { hideStatusBar } from './../../utils/statusBar'
+
 import {
   DEVICE_WIDTH,
   DEVICE_HEIGHT,
@@ -91,6 +93,8 @@ Page(
     build() {
       logger.debug('note-detail build invoked')
 
+      hideStatusBar()
+
       // Defensive: navigating between pages doesn't reliably clear the
       // previous page's widgets first in this environment (verified — a
       // stale title bled through on the folder screen), so every page
@@ -111,6 +115,9 @@ Page(
       this.applyKeepAwake()
 
       this.loadNote()
+    },
+    onResume() {
+      hideStatusBar()
     },
     onDestroy() {
       logger.debug('note-detail onDestroy invoked')

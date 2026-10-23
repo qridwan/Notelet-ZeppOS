@@ -23,7 +23,8 @@ export const TITLE_TEXT_STYLE = {
   color: 0xffffff,
   text_size: px(32),
   align_h: hmUI.align.CENTER_H,
-  text_style: hmUI.text_style.NONE
+  // Long folder names end in "…" rather than running off the screen.
+  text_style: hmUI.text_style.ELLIPSIS
 }
 
 export const TIPS_TEXT_STYLE = {

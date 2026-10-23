@@ -3,6 +3,7 @@ import { push } from '@zos/router'
 import { log as Logger } from '@zos/utils'
 
 import { BasePage } from '@zeppos/zml/base-page'
+import { hideStatusBar } from './../../utils/statusBar'
 import {
   DEVICE_WIDTH,
   DEVICE_HEIGHT,
@@ -36,6 +37,7 @@ Page(
     },
     build() {
       logger.debug('home build invoked')
+      hideStatusBar()
 
       // Defensive: navigating between pages doesn't reliably clear the
       // previous page's widgets first in this environment (verified — a
@@ -58,6 +60,9 @@ Page(
       // a sync in the background and refresh once it settles.
       this.loadFromLocalStore()
       this.sync()
+    },
+    onResume() {
+      hideStatusBar()
     },
     onDestroy() {
       logger.debug('home onDestroy invoked')
