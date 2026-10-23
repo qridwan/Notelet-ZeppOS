@@ -19,73 +19,148 @@ const SEED_DATA = {
   deletedNoteIds: []
 }
 
-// SRS #47: minimal, clean, no decorative UI — one accent color reserved for
-// primary actions, everything else is plain text with a hairline divider.
+// Soft card layout: light grey page, white rounded cards, one accent color
+// for primary actions, red only for destructive ones.
 const ACCENT = '#4F7DF3'
+const ACCENT_SOFT = '#EAF0FE'
+const DANGER = '#E5484D'
+const TEXT_PRIMARY = '#1C1C1E'
 const TEXT_SECONDARY = '#8A8A8E'
-const BORDER = '#EAEAEA'
+const SURFACE = '#FFFFFF'
+const SURFACE_MUTED = '#F0F1F4'
+const PAGE_BG = '#F5F6F8'
+const BORDER = '#ECECEF'
+
+const pageStyle = { padding: '20px 16px 40px', background: PAGE_BG }
+
+const heroTitleStyle = { fontSize: '24px', fontWeight: 'bold', color: TEXT_PRIMARY }
+const heroTaglineStyle = {
+  fontSize: '13px',
+  color: TEXT_SECONDARY,
+  marginTop: '2px',
+  marginBottom: '16px'
+}
+
+const cardStyle = {
+  background: SURFACE,
+  borderRadius: '14px',
+  border: `1px solid ${BORDER}`,
+  padding: '14px 16px',
+  marginBottom: '16px'
+}
+
+const sectionHeaderStyle = {
+  display: 'flex',
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: '6px'
+}
+
+const sectionTitleStyle = { flex: 1, fontSize: '16px', fontWeight: 'bold', color: TEXT_PRIMARY }
+const sectionCountStyle = { fontSize: '12px', color: TEXT_SECONDARY }
 
 const rowStyle = {
   display: 'flex',
   flexDirection: 'row',
   alignItems: 'center',
-  padding: '10px 0',
+  padding: '12px 0',
   borderBottom: `1px solid ${BORDER}`
 }
 
-const linkStyle = {
-  fontSize: '13px',
-  color: TEXT_SECONDARY,
-  marginLeft: '16px'
+const rowTitleStyle = { fontSize: '15px', color: TEXT_PRIMARY }
+const rowMetaStyle = { fontSize: '12px', color: TEXT_SECONDARY, marginTop: '2px' }
+
+const pillStyle = {
+  display: 'inline-block',
+  fontSize: '11px',
+  color: ACCENT,
+  background: ACCENT_SOFT,
+  borderRadius: '10px',
+  padding: '2px 8px',
+  marginTop: '6px'
 }
 
-const primaryButtonStyle = {
-  fontSize: '14px',
-  color: ACCENT,
-  textAlign: 'left',
-  marginTop: '10px'
+const noteActionsStyle = {
+  display: 'flex',
+  flexDirection: 'row',
+  justifyContent: 'flex-end',
+  marginTop: '4px'
 }
+
+const actionLinkStyle = { fontSize: '13px', color: ACCENT, marginLeft: '16px' }
+const dangerLinkStyle = { fontSize: '13px', color: DANGER, marginLeft: '16px' }
 
 const emptyStateStyle = {
   fontSize: '13px',
   color: TEXT_SECONDARY,
-  padding: '8px 0'
+  textAlign: 'center',
+  padding: '18px 0'
 }
 
-const taglineStyle = {
-  fontSize: '12px',
-  color: TEXT_SECONDARY,
-  marginBottom: '4px'
+const primaryButtonStyle = {
+  fontSize: '14px',
+  fontWeight: 'bold',
+  color: '#FFFFFF',
+  background: ACCENT,
+  borderRadius: '10px',
+  padding: '10px 18px',
+  textAlign: 'center'
+}
+
+const secondaryButtonStyle = {
+  fontSize: '14px',
+  color: TEXT_PRIMARY,
+  background: SURFACE_MUTED,
+  borderRadius: '10px',
+  padding: '10px 18px',
+  textAlign: 'center',
+  marginLeft: '10px'
+}
+
+const addButtonStyle = {
+  fontSize: '14px',
+  color: ACCENT,
+  background: ACCENT_SOFT,
+  borderRadius: '10px',
+  padding: '10px 0',
+  textAlign: 'center',
+  marginTop: '12px'
 }
 
 const addFormStyle = {
-  marginTop: '4px',
-  paddingTop: '10px',
+  marginTop: '12px',
+  paddingTop: '12px',
   borderTop: `1px solid ${BORDER}`
 }
+
+const formLabelStyle = { fontSize: '12px', color: TEXT_SECONDARY, marginTop: '12px' }
 
 const formActionsStyle = {
   display: 'flex',
   flexDirection: 'row',
   alignItems: 'center',
-  marginTop: '10px'
+  marginTop: '16px'
 }
 
-const cancelButtonStyle = {
-  fontSize: '14px',
-  color: TEXT_SECONDARY,
-  marginLeft: '20px'
-}
+const chipsStyle = { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', marginTop: '8px' }
 
 function folderChipStyle(active) {
   return {
     fontSize: '13px',
-    padding: '4px 2px 6px',
-    marginRight: '18px',
-    color: active ? ACCENT : TEXT_SECONDARY,
-    fontWeight: active ? 'bold' : 'normal',
-    borderBottom: active ? `2px solid ${ACCENT}` : '2px solid transparent'
+    padding: '6px 12px',
+    marginRight: '8px',
+    marginBottom: '8px',
+    borderRadius: '16px',
+    color: active ? '#FFFFFF' : TEXT_PRIMARY,
+    background: active ? ACCENT : SURFACE_MUTED,
+    fontWeight: active ? 'bold' : 'normal'
   }
+}
+
+function truncate(text, max) {
+  if (!text) return ''
+  const flat = String(text).replace(/\s+/g, ' ').trim()
+  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat
 }
 
 function readJson(storage, key, fallback) {
@@ -128,12 +203,30 @@ AppSettingsPage({
   loadState(settingsStorage) {
     this.state.settingsStorage = settingsStorage
     const data = readJson(settingsStorage, NOTELET_DATA_KEY, SEED_DATA)
+    // The form draft lives in the same blob as the data. this.state alone
+    // doesn't survive the page rebuilding on every write, which is how the
+    // chosen folder was getting lost and notes ended up with folderId null.
+    const draft = data.draft || {}
     this.state.folders = data.folders || []
     this.state.notes = data.notes || []
     this.state.deletedFolderIds = data.deletedFolderIds || []
     this.state.deletedNoteIds = data.deletedNoteIds || []
-    if (this.state.newNoteFolderId === null && this.state.folders.length > 0) {
-      this.state.newNoteFolderId = this.state.folders[0].id
+    this.state.newFolderName = draft.newFolderName || ''
+    this.state.newNoteTitle = draft.newNoteTitle || ''
+    this.state.newNoteDescription = draft.newNoteDescription || ''
+    this.state.isAddingFolder = !!draft.isAddingFolder
+    this.state.isAddingNote = !!draft.isAddingNote
+
+    // undefined = never chosen -> default to the first folder; null = the
+    // user explicitly picked Uncategorized; a deleted folder id -> reset.
+    const chosen = draft.newNoteFolderId
+    const exists = this.state.folders.some((f) => f.id === chosen)
+    if (chosen === null) {
+      this.state.newNoteFolderId = null
+    } else if (exists) {
+      this.state.newNoteFolderId = chosen
+    } else {
+      this.state.newNoteFolderId = this.state.folders.length > 0 ? this.state.folders[0].id : null
     }
   },
   // The one and only settingsStorage write for any CRUD action — see the
@@ -145,7 +238,15 @@ AppSettingsPage({
         folders: this.state.folders,
         notes: this.state.notes,
         deletedFolderIds: this.state.deletedFolderIds,
-        deletedNoteIds: this.state.deletedNoteIds
+        deletedNoteIds: this.state.deletedNoteIds,
+        draft: {
+          newFolderName: this.state.newFolderName,
+          newNoteTitle: this.state.newNoteTitle,
+          newNoteDescription: this.state.newNoteDescription,
+          newNoteFolderId: this.state.newNoteFolderId,
+          isAddingFolder: this.state.isAddingFolder,
+          isAddingNote: this.state.isAddingNote
+        }
       })
     )
   },
@@ -241,170 +342,192 @@ AppSettingsPage({
     this.state.settingsStorage.setItem(FORCE_SYNC_KEY, String(Date.now()))
   },
 
-  renderFolderRow(folder) {
-    return View({ style: rowStyle }, [
-      View({ style: { flex: 1, fontSize: '14px' } }, [folder.name]),
+  noteCountIn(folderId) {
+    return this.state.notes.filter((n) => n.folderId === folderId).length
+  },
+
+  renderHeader(title, count) {
+    return View({ style: sectionHeaderStyle }, [
+      View({ style: sectionTitleStyle }, [title]),
+      View({ style: sectionCountStyle }, [String(count)])
+    ])
+  },
+
+  renderFolderRow(folder, isLast) {
+    const count = this.noteCountIn(folder.id)
+    return View({ style: { ...rowStyle, borderBottom: isLast ? 'none' : rowStyle.borderBottom } }, [
+      View({ style: { flex: 1 } }, [
+        View({ style: rowTitleStyle }, [`📁 ${folder.name}`]),
+        View({ style: rowMetaStyle }, [`${count} ${count === 1 ? 'note' : 'notes'}`])
+      ]),
       Button({
         label: gettext('delete'),
-        style: linkStyle,
+        style: dangerLinkStyle,
         onClick: () => this.deleteFolder(folder.id)
       })
     ])
   },
 
-  renderNoteRow(note) {
-    return View({ style: rowStyle }, [
-      View({ style: { flex: 1 } }, [
-        View({ style: { fontSize: '14px' } }, [`${note.isPinned ? '📌 ' : ''}${note.title}`]),
-        View({ style: { fontSize: '12px', color: TEXT_SECONDARY, marginTop: '1px' } }, [
-          this.folderName(note.folderId)
+  renderNoteRow(note, isLast) {
+    const preview = truncate(note.description, 90)
+    return View(
+      {
+        style: {
+          ...rowStyle,
+          alignItems: 'stretch',
+          borderBottom: isLast ? 'none' : rowStyle.borderBottom
+        }
+      },
+      [
+        View({ style: { flex: 1 } }, [
+          View({ style: { ...rowTitleStyle, fontWeight: 'bold' } }, [
+            `${note.isPinned ? '📌 ' : ''}${note.title}`
+          ]),
+          ...(preview ? [View({ style: rowMetaStyle }, [preview])] : []),
+          View({ style: pillStyle }, [this.folderName(note.folderId)]),
+          View({ style: noteActionsStyle }, [
+            Button({
+              label: note.isPinned ? gettext('unpin') : gettext('pin'),
+              style: actionLinkStyle,
+              onClick: () => this.togglePinned(note.id)
+            }),
+            Button({
+              label: gettext('delete'),
+              style: dangerLinkStyle,
+              onClick: () => this.deleteNote(note.id)
+            })
+          ])
         ])
+      ]
+    )
+  },
+
+  renderSyncCard(syncStatus) {
+    const summary = syncStatus
+      ? gettext('syncSummary')
+          .replace('{time}', new Date(syncStatus.lastSyncedAt || 0).toLocaleString())
+          .replace('{folders}', String(syncStatus.folderCount ?? 0))
+          .replace('{notes}', String(syncStatus.noteCount ?? 0))
+      : gettext('syncNeverSummary')
+    return View({ style: cardStyle }, [
+      View({ style: { fontSize: '16px', fontWeight: 'bold', color: TEXT_PRIMARY } }, [
+        `${syncStatus ? '🟢' : '⚪️'} ${gettext('syncSectionTitle')}`
       ]),
+      View({ style: { ...rowMetaStyle, marginTop: '4px', marginBottom: '12px' } }, [summary]),
       Button({
-        label: note.isPinned ? gettext('unpin') : gettext('pin'),
-        style: linkStyle,
-        onClick: () => this.togglePinned(note.id)
-      }),
-      Button({
-        label: gettext('delete'),
-        style: linkStyle,
-        onClick: () => this.deleteNote(note.id)
+        label: gettext('checkForUpdates'),
+        style: primaryButtonStyle,
+        onClick: () => this.requestSync()
       })
+    ])
+  },
+
+  renderAddForm({ nameLabel, value, onChange, onSubmit, onCancel, submitKey, extra }) {
+    return View({ style: addFormStyle }, [
+      TextInput({ label: nameLabel, value, onChange }),
+      ...(extra || []),
+      View({ style: formActionsStyle }, [
+        Button({ label: gettext(submitKey), style: primaryButtonStyle, onClick: onSubmit }),
+        Button({ label: gettext('cancel'), style: secondaryButtonStyle, onClick: onCancel })
+      ])
     ])
   },
 
   build(props) {
     this.loadState(props.settingsStorage)
     const syncStatus = readJson(props.settingsStorage, SYNC_STATUS_KEY, null)
+    const { folders, notes } = this.state
+    // Pinned notes first; otherwise newest first.
+    const sortedNotes = [...notes].sort(
+      (a, b) => Number(b.isPinned) - Number(a.isPinned) || (b.updatedAt || 0) - (a.updatedAt || 0)
+    )
 
-    return View({ style: { padding: '16px 20px 32px' } }, [
-      View({ style: taglineStyle }, [gettext('aboutBody')]),
+    return View({ style: pageStyle }, [
+      View({ style: heroTitleStyle }, ['Notelet']),
+      View({ style: heroTaglineStyle }, [gettext('aboutBody')]),
 
-      Section(
-        {
-          title: gettext('syncSectionTitle'),
-          description: syncStatus
-            ? gettext('syncSummary')
-                .replace('{time}', new Date(syncStatus.lastSyncedAt || 0).toLocaleString())
-                .replace('{folders}', String(syncStatus.folderCount ?? 0))
-                .replace('{notes}', String(syncStatus.noteCount ?? 0))
-            : gettext('syncNeverSummary')
-        },
-        [
-          Button({
-            label: gettext('checkForUpdates'),
-            style: primaryButtonStyle,
-            onClick: () => this.requestSync()
-          })
-        ]
-      ),
+      this.renderSyncCard(syncStatus),
 
-      Section({ title: gettext('foldersSectionTitle') }, [
-        this.state.folders.length > 0
+      View({ style: cardStyle }, [
+        this.renderHeader(gettext('foldersSectionTitle'), folders.length),
+        folders.length > 0
           ? View(
               {},
-              this.state.folders.map((folder) => this.renderFolderRow(folder))
+              folders.map((folder, i) => this.renderFolderRow(folder, i === folders.length - 1))
             )
           : View({ style: emptyStateStyle }, [gettext('noFoldersYet')]),
 
         this.state.isAddingFolder
-          ? View({ style: addFormStyle }, [
-              TextInput({
-                label: gettext('newFolderName'),
-                value: this.state.newFolderName,
-                // TextInput opens a native modal and onChange fires once on
-                // confirm, not per keystroke — persist() here is what makes
-                // the typed value actually show up as this row's preview
-                // (see selectNoteFolder for why that's needed at all).
-                onChange: (val) => {
-                  this.state.newFolderName = val
-                  this.persist()
-                }
-              }),
-              View({ style: formActionsStyle }, [
-                Button({
-                  label: gettext('addFolder'),
-                  style: primaryButtonStyle,
-                  onClick: () => this.addFolder()
-                }),
-                Button({
-                  label: gettext('cancel'),
-                  style: cancelButtonStyle,
-                  onClick: () => this.cancelAddingFolder()
-                })
-              ])
-            ])
+          ? this.renderAddForm({
+              nameLabel: gettext('newFolderName'),
+              value: this.state.newFolderName,
+              // TextInput opens a native modal and onChange fires once on
+              // confirm, not per keystroke — persist() makes the typed value
+              // show up (this.state alone doesn't redraw the page).
+              onChange: (val) => {
+                this.state.newFolderName = val
+                this.persist()
+              },
+              submitKey: 'addFolder',
+              onSubmit: () => this.addFolder(),
+              onCancel: () => this.cancelAddingFolder()
+            })
           : Button({
               label: `+ ${gettext('addFolder')}`,
-              style: primaryButtonStyle,
+              style: addButtonStyle,
               onClick: () => this.startAddingFolder()
             })
       ]),
 
-      Section({ title: gettext('notesSectionTitle') }, [
-        this.state.notes.length > 0
+      View({ style: cardStyle }, [
+        this.renderHeader(gettext('notesSectionTitle'), notes.length),
+        sortedNotes.length > 0
           ? View(
               {},
-              this.state.notes.map((note) => this.renderNoteRow(note))
+              sortedNotes.map((note, i) => this.renderNoteRow(note, i === sortedNotes.length - 1))
             )
           : View({ style: emptyStateStyle }, [gettext('noNotesYet')]),
 
         this.state.isAddingNote
-          ? View({ style: addFormStyle }, [
-              TextInput({
-                label: gettext('newNoteTitle'),
-                value: this.state.newNoteTitle,
-                onChange: (val) => {
-                  this.state.newNoteTitle = val
-                  this.persist()
-                }
-              }),
-              TextInput({
-                label: gettext('newNoteDescription'),
-                value: this.state.newNoteDescription,
-                onChange: (val) => {
-                  this.state.newNoteDescription = val
-                  this.persist()
-                }
-              }),
-              this.state.folders.length > 0 &&
+          ? this.renderAddForm({
+              nameLabel: gettext('newNoteTitle'),
+              value: this.state.newNoteTitle,
+              onChange: (val) => {
+                this.state.newNoteTitle = val
+                this.persist()
+              },
+              submitKey: 'addNote',
+              onSubmit: () => this.addNote(),
+              onCancel: () => this.cancelAddingNote(),
+              extra: [
+                TextInput({
+                  label: gettext('newNoteDescription'),
+                  value: this.state.newNoteDescription,
+                  onChange: (val) => {
+                    this.state.newNoteDescription = val
+                    this.persist()
+                  }
+                }),
+                View({ style: formLabelStyle }, [gettext('saveIn')]),
                 View(
-                  {
-                    style: {
-                      display: 'flex',
-                      flexDirection: 'row',
-                      flexWrap: 'wrap',
-                      marginTop: '10px'
-                    }
-                  },
-                  this.state.folders.map((folder) => {
+                  { style: chipsStyle },
+                  [{ id: null, name: gettext('uncategorized') }, ...folders].map((folder) => {
                     const active = this.state.newNoteFolderId === folder.id
                     return Button({
                       // A style-only change on an otherwise-identical Button
-                      // doesn't reliably re-render here (same issue found on
-                      // the watch side) — the label itself must differ too.
-                      label: active ? `● ${folder.name}` : folder.name,
+                      // doesn't reliably re-render here — the label must
+                      // differ too.
+                      label: active ? `✓ ${folder.name}` : folder.name,
                       style: folderChipStyle(active),
                       onClick: () => this.selectNoteFolder(folder.id)
                     })
                   })
-                ),
-              View({ style: formActionsStyle }, [
-                Button({
-                  label: gettext('addNote'),
-                  style: primaryButtonStyle,
-                  onClick: () => this.addNote()
-                }),
-                Button({
-                  label: gettext('cancel'),
-                  style: cancelButtonStyle,
-                  onClick: () => this.cancelAddingNote()
-                })
-              ])
-            ])
+                )
+              ]
+            })
           : Button({
               label: `+ ${gettext('addNote')}`,
-              style: primaryButtonStyle,
+              style: addButtonStyle,
               onClick: () => this.startAddingNote()
             })
       ])

@@ -24,6 +24,16 @@ export function getNotesByFolder(folderId) {
   return loadNotes().filter((note) => note.folderId === folderId)
 }
 
+export const UNCATEGORIZED_ID = '__uncategorized__'
+
+// Notes with no folder, or whose folder no longer exists (e.g. deleted on the
+// phone before the next sync) — without this they were reachable only via
+// Pinned, which looked like "only pinned notes sync".
+export function getUncategorizedNotes() {
+  const folderIds = new Set(loadFolders().map((folder) => folder.id))
+  return loadNotes().filter((note) => !note.folderId || !folderIds.has(note.folderId))
+}
+
 export function getPinnedNotes() {
   return loadNotes().filter((note) => note.isPinned)
 }

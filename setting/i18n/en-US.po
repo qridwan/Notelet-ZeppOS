@@ -8,7 +8,7 @@ msgid "syncSummary"
 msgstr "Last checked {time} — {folders} folders, {notes} notes on watch."
 
 msgid "syncNeverSummary"
-msgstr "Not synced yet. Open Notelet on your watch, or check now."
+msgstr "Not synced yet. Open Notelet on your watch (keep it open), then tap Check for updates."
 
 msgid "checkForUpdates"
 msgstr "Check for updates"
@@ -54,3 +54,6 @@ msgstr "Delete"
 
 msgid "cancel"
 msgstr "Cancel"
+
+msgid "saveIn"
+msgstr "Save in"

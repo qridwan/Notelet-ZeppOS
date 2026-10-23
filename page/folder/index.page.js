@@ -15,7 +15,12 @@ import {
   ROW_SPACE,
   ROW_BUTTON_STYLE
 } from 'zosLoader:./index.page.[pf].layout.js'
-import { getNotesByFolder, getPinnedNotes } from './../../utils/syncStore'
+import {
+  getNotesByFolder,
+  getPinnedNotes,
+  getUncategorizedNotes,
+  UNCATEGORIZED_ID
+} from './../../utils/syncStore'
 
 const logger = Logger.getLogger('notelet-folder')
 
@@ -64,7 +69,13 @@ Page(
       const { folderId } = this.state
       // Reads the watch's own local copy (SRS #39) — no request to app-side
       // here, so this works whether or not the phone is connected.
-      this.state.notes = folderId === '__pinned__' ? getPinnedNotes() : getNotesByFolder(folderId)
+      if (folderId === '__pinned__') {
+        this.state.notes = getPinnedNotes()
+      } else if (folderId === UNCATEGORIZED_ID) {
+        this.state.notes = getUncategorizedNotes()
+      } else {
+        this.state.notes = getNotesByFolder(folderId)
+      }
       this.renderList()
     },
     // Row widgets are rebuilt on every refresh rather than diffed/reused —

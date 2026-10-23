@@ -16,7 +16,7 @@ import {
   ROW_BUTTON_STYLE
 } from 'zosLoader:./index.page.[pf].layout.js'
 import { formatTime } from './../../utils/index'
-import { getFolders } from './../../utils/syncStore'
+import { getFolders, getUncategorizedNotes, UNCATEGORIZED_ID } from './../../utils/syncStore'
 import { getSyncStatus } from './../../utils/syncStatus'
 import { runSync } from './../../utils/syncClient'
 import { SyncStatusValue } from './../../utils/constants'
@@ -115,6 +115,15 @@ Page(
           label: folder.name,
           route: { type: 'folder', folderId: folder.id, folderName: folder.name }
         })),
+        ...(getUncategorizedNotes().length > 0
+          ? [
+              {
+                iconText: '🗂',
+                label: 'Uncategorized',
+                route: { type: 'folder', folderId: UNCATEGORIZED_ID, folderName: 'Uncategorized' }
+              }
+            ]
+          : []),
         // { iconText: '🔍', label: 'Search', route: { type: 'search' } },
         { iconText: '', label: syncLabel, route: { type: 'sync' } }
       ]
